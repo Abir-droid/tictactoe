@@ -35,7 +35,7 @@ type Client struct {
 	Send         chan Message
 	Room         *GameRoom
 	Symbol       string
-	LastOpponent string // Remembers the previous opponent's username
+	LastOpponent string
 }
 
 type GameRoom struct {
@@ -69,10 +69,9 @@ func main() {
 	http.HandleFunc("/ws", handleWebSocket)
 	http.Handle("/", http.FileServer(http.Dir("./public")))
 
-	fmt.Println("🚀 Game server running at http://localhost:8080")
 	port := os.Getenv("PORT")
 	if port == "" {
-    port = "8080" // Fallback for local development
+		port = "8080"
 	}
 	fmt.Printf("🚀 Game server running on port %s\n", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
@@ -105,7 +104,7 @@ func handleRegister(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "registered", "username": req.Username})
 }
 
-// --- WEBSOCKET & SMART MATCHMAKING ---
+// --- WEBSOCKET & BULLETPROOF MATCHMAKING ---
 
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	username := r.URL.Query().Get("username")
@@ -127,11 +126,19 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	client := &Client{
 		Username: username,
 		Conn:     conn,
-		Send:     make(chan Message, 10),
+		Send:     make(chan Message, 20),
 	}
 
 	go client.writePump()
 	go client.readPump()
+}
+
+func (c *Client) safeSend(msg Message) {
+	select {
+	case c.Send <- msg:
+	default:
+		log.Printf("Warning: Send channel full for user %s\n", c.Username)
+	}
 }
 
 func matchmaker() {
@@ -140,28 +147,24 @@ func matchmaker() {
 	for {
 		select {
 		case client := <-matchQueue:
-			// Add client to waiting list if not already present
-			alreadyIn := false
+			// Remove any old/duplicate instances of this user or pointer from queue
+			cleaned := make([]*Client, 0, len(waiting))
 			for _, w := range waiting {
-				if w == client {
-					alreadyIn = true
-					break
+				if w != client && w.Username != client.Username {
+					cleaned = append(cleaned, w)
 				}
 			}
-			if !alreadyIn {
-				waiting = append(waiting, client)
-			}
+			waiting = append(cleaned, client)
 			waiting = processMatches(waiting)
 
 		case client := <-leaveQueue:
-			// Remove client from waiting list if they disconnect or exit queue
-			newWaiting := make([]*Client, 0, len(waiting))
+			cleaned := make([]*Client, 0, len(waiting))
 			for _, w := range waiting {
-				if w != client {
-					newWaiting = append(newWaiting, w)
+				if w != client && w.Username != client.Username {
+					cleaned = append(cleaned, w)
 				}
 			}
-			waiting = newWaiting
+			waiting = cleaned
 		}
 	}
 }
@@ -171,17 +174,27 @@ func processMatches(waiting []*Client) []*Client {
 		p1 := waiting[0]
 		matchedIdx := -1
 
-		// Priority 1: Search for an opponent that is NOT p1's last opponent
+		// Priority 1: Search for an opponent with a DIFFERENT username who is NOT p1's last opponent
 		for i := 1; i < len(waiting); i++ {
-			if waiting[i].Username != p1.LastOpponent {
+			if waiting[i].Username != p1.Username && waiting[i].Username != p1.LastOpponent {
 				matchedIdx = i
 				break
 			}
 		}
 
-		// Priority 2: If no other opponents exist in queue, fallback to matching with last opponent
+		// Priority 2: Fallback to matching with last opponent if no other player exists
 		if matchedIdx == -1 {
-			matchedIdx = 1
+			for i := 1; i < len(waiting); i++ {
+				if waiting[i].Username != p1.Username {
+					matchedIdx = i
+					break
+				}
+			}
+		}
+
+		// Stop if no valid distinct opponent is found
+		if matchedIdx == -1 {
+			break
 		}
 
 		p2 := waiting[matchedIdx]
@@ -195,7 +208,6 @@ func processMatches(waiting []*Client) []*Client {
 		}
 		waiting = newWaiting
 
-		// Start game room
 		startMatch(p1, p2)
 	}
 
@@ -203,7 +215,6 @@ func processMatches(waiting []*Client) []*Client {
 }
 
 func startMatch(p1, p2 *Client) {
-	// Remember each other as last opponent
 	p1.LastOpponent = p2.Username
 	p2.LastOpponent = p1.Username
 
@@ -220,14 +231,19 @@ func startMatch(p1, p2 *Client) {
 	p2.Room = room
 	p2.Symbol = "O"
 
-	p1.Send <- Message{Type: "MATCH_FOUND", Symbol: "X", Turn: "X", Opponent: p2.Username}
-	p2.Send <- Message{Type: "MATCH_FOUND", Symbol: "O", Turn: "X", Opponent: p1.Username}
+	p1.safeSend(Message{Type: "MATCH_FOUND", Symbol: "X", Turn: "X", Opponent: p2.Username})
+	p2.safeSend(Message{Type: "MATCH_FOUND", Symbol: "O", Turn: "X", Opponent: p1.Username})
 }
 
 // --- GAME & ROOM LIFECYCLE LOGIC ---
 
 func (c *Client) readPump() {
 	defer func() {
+		// Clean up username on disconnect so player can re-register/refresh
+		usersMu.Lock()
+		delete(users, c.Username)
+		usersMu.Unlock()
+
 		leaveQueue <- c
 		c.leaveCurrentRoom()
 		c.Conn.Close()
@@ -259,8 +275,12 @@ func (c *Client) readPump() {
 }
 
 func (c *Client) writePump() {
+	defer c.Conn.Close()
 	for msg := range c.Send {
-		c.Conn.WriteJSON(msg)
+		err := c.Conn.WriteJSON(msg)
+		if err != nil {
+			break
+		}
 	}
 }
 
@@ -282,10 +302,10 @@ func (c *Client) leaveCurrentRoom() {
 
 	if opponent != nil && opponent.Room == r {
 		opponent.Room = nil
-		opponent.Send <- Message{
+		opponent.safeSend(Message{
 			Type:    "OPPONENT_LEFT",
 			Message: "Your opponent left the game.",
-		}
+		})
 	}
 
 	c.Room = nil
@@ -296,17 +316,17 @@ func (r *GameRoom) handleMove(c *Client, pos int) {
 	defer r.Mu.Unlock()
 
 	if r.GameOver {
-		c.Send <- Message{Type: "ERROR", Error: "Game is already over"}
+		c.safeSend(Message{Type: "ERROR", Error: "Game is already over"})
 		return
 	}
 
 	if pos < 0 || pos > 8 || r.Board[pos] != "" {
-		c.Send <- Message{Type: "ERROR", Error: "Invalid position"}
+		c.safeSend(Message{Type: "ERROR", Error: "Invalid position"})
 		return
 	}
 
 	if c.Symbol != r.Turn {
-		c.Send <- Message{Type: "ERROR", Error: "Not your turn"}
+		c.safeSend(Message{Type: "ERROR", Error: "Not your turn"})
 		return
 	}
 
@@ -320,8 +340,8 @@ func (r *GameRoom) handleMove(c *Client, pos int) {
 			Board:  r.Board,
 			Winner: winner,
 		}
-		r.PlayerX.Send <- stateMsg
-		r.PlayerO.Send <- stateMsg
+		r.PlayerX.safeSend(stateMsg)
+		r.PlayerO.safeSend(stateMsg)
 		return
 	}
 
@@ -336,8 +356,8 @@ func (r *GameRoom) handleMove(c *Client, pos int) {
 		Board: r.Board,
 		Turn:  r.Turn,
 	}
-	r.PlayerX.Send <- broadcastMsg
-	r.PlayerO.Send <- broadcastMsg
+	r.PlayerX.safeSend(broadcastMsg)
+	r.PlayerO.safeSend(broadcastMsg)
 }
 
 func (r *GameRoom) handleRetry(c *Client) {
@@ -350,10 +370,10 @@ func (r *GameRoom) handleRetry(c *Client) {
 
 	if c == r.PlayerX {
 		r.RetryX = true
-		r.PlayerO.Send <- Message{Type: "RETRY_REQUESTED", Message: "Opponent wants a rematch!"}
+		r.PlayerO.safeSend(Message{Type: "RETRY_REQUESTED", Message: "Opponent wants a rematch!"})
 	} else if c == r.PlayerO {
 		r.RetryO = true
-		r.PlayerX.Send <- Message{Type: "RETRY_REQUESTED", Message: "Opponent wants a rematch!"}
+		r.PlayerX.safeSend(Message{Type: "RETRY_REQUESTED", Message: "Opponent wants a rematch!"})
 	}
 
 	if r.RetryX && r.RetryO {
@@ -367,8 +387,8 @@ func (r *GameRoom) handleRetry(c *Client) {
 		r.PlayerO.Symbol = "O"
 		r.Turn = "X"
 
-		r.PlayerX.Send <- Message{Type: "RESTART_GAME", Symbol: "X", Turn: "X", Board: r.Board}
-		r.PlayerO.Send <- Message{Type: "RESTART_GAME", Symbol: "O", Turn: "X", Board: r.Board}
+		r.PlayerX.safeSend(Message{Type: "RESTART_GAME", Symbol: "X", Turn: "X", Board: r.Board})
+		r.PlayerO.safeSend(Message{Type: "RESTART_GAME", Symbol: "O", Turn: "X", Board: r.Board})
 	}
 }
 
