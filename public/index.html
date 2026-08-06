@@ -5,34 +5,83 @@
   <title>Realtime Tic Tac Toe</title>
   <style>
     body { font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; background: #0f172a; color: #f8fafc; margin: 0; padding: 2rem; }
-    .card { background: #1e293b; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; width: 320px; }
+    .card { background: #1e293b; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; width: 340px; }
     input, button { width: 100%; padding: 10px; margin-top: 8px; border-radius: 6px; border: none; font-size: 1rem; box-sizing: border-box; }
     button { background: #3b82f6; color: white; cursor: pointer; font-weight: bold; }
-    button.btn-sec { background: #64748b; }
+    button.btn-sec { background: #64748b; margin-top: 8px; }
     button:disabled { background: #475569; cursor: not-allowed; }
     .btn-retry { background: #10b981; margin-top: 10px; }
     .btn-retry:hover { background: #059669; }
     .btn-new { background: #f59e0b; margin-top: 8px; }
     .btn-new:hover { background: #d97706; }
+    .link-btn { display: inline-block; margin-top: 12px; color: #38bdf8; text-decoration: none; font-size: 0.9rem; cursor: pointer; }
+    .link-btn:hover { text-decoration: underline; }
+    
+    /* Leaderboard Styling */
+    .leaderboard-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.85rem; }
+    .leaderboard-table th, .leaderboard-table td { padding: 8px; border-bottom: 1px solid #334155; text-align: center; }
+    .leaderboard-table th { background: #0f172a; color: #38bdf8; }
+
     .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 20px; }
     .cell { width: 90px; height: 90px; background: #334155; font-size: 2.5rem; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 8px; user-select: none; }
     .cell:hover { background: #475569; }
-    .hidden { display: none; }
+    .hidden { display: none !important; }
     #status { margin-top: 15px; font-weight: 600; color: #38bdf8; }
     #retry-msg { margin-top: 10px; font-size: 0.9rem; color: #f59e0b; }
   </style>
 </head>
 <body>
 
-  <div class="card" id="auth-section">
-    <h2>Tic Tac Toe</h2>
-    <input type="text" id="username" placeholder="Username" />
-    <input type="password" id="password" placeholder="Password" />
-    <button onclick="auth('/api/login')">Login</button>
-    <button class="btn-sec" onclick="auth('/api/register')">Register New Account</button>
+  <!-- VIEW 1: LOGIN -->
+  <div class="card" id="login-view">
+    <h2>Login</h2>
+    <input type="text" id="login-username" placeholder="Username" />
+    <input type="password" id="login-password" placeholder="Password" />
+    <button onclick="login()">Login</button>
+    <div>
+      <a class="link-btn" onclick="showView('register-view')">Create new account</a>
+    </div>
   </div>
 
-  <div class="card hidden" id="game-section">
+  <!-- VIEW 2: REGISTER -->
+  <div class="card hidden" id="register-view">
+    <h2>Create Account</h2>
+    <input type="text" id="reg-username" placeholder="Username" />
+    <input type="password" id="reg-password" placeholder="Password" />
+    <button onclick="register()">Register / Create Account</button>
+    <div>
+      <a class="link-btn" onclick="showView('login-view')">Already have an account? Login</a>
+    </div>
+  </div>
+
+  <!-- VIEW 3: DASHBOARD -->
+  <div class="card hidden" id="dashboard-view">
+    <h2 style="margin-bottom: 4px;">Welcome!</h2>
+    <div id="user-display" style="color: #38bdf8; font-weight: bold; font-size: 1.2rem; margin-bottom: 12px;"></div>
+
+    <button onclick="startNewGame()">New Game 🎮</button>
+    <button class="btn-sec" onclick="logout()">Logout 🚪</button>
+
+    <h3 style="margin-top: 20px; margin-bottom: 4px;">🏆 Global Leaderboard</h3>
+    <table class="leaderboard-table">
+      <thead>
+        <tr>
+          <th>Player</th>
+          <th>W</th>
+          <th>L</th>
+          <th>D</th>
+        </tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="4">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- VIEW 4: GAME SECTION -->
+  <div class="card hidden" id="game-view">
+    <button class="btn-sec" style="margin-bottom: 12px;" onclick="returnToDashboard()">← Back to Dashboard</button>
+    
     <div id="status">Click to Search Player</div>
     <div id="retry-msg"></div>
     
@@ -59,12 +108,21 @@
     let mySymbol = "";
     let currentTurn = "";
 
-    async function auth(endpoint) {
-      const user = document.getElementById("username").value.trim();
-      const pass = document.getElementById("password").value.trim();
+    function showView(viewId) {
+      document.getElementById("login-view").classList.add("hidden");
+      document.getElementById("register-view").classList.add("hidden");
+      document.getElementById("dashboard-view").classList.add("hidden");
+      document.getElementById("game-view").classList.add("hidden");
+
+      document.getElementById(viewId).classList.remove("hidden");
+    }
+
+    async function login() {
+      const user = document.getElementById("login-username").value.trim();
+      const pass = document.getElementById("login-password").value.trim();
       if (!user || !pass) return alert("Enter both username and password");
 
-      const res = await fetch(endpoint, {
+      const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: user, password: pass })
@@ -72,16 +130,69 @@
 
       if (res.ok) {
         myUsername = user;
-        document.getElementById("auth-section").classList.add("hidden");
-        document.getElementById("game-section").classList.remove("hidden");
-        connectWebSocket();
+        openDashboard();
       } else {
         const err = await res.text();
         alert(err);
       }
     }
 
+    async function register() {
+      const user = document.getElementById("reg-username").value.trim();
+      const pass = document.getElementById("reg-password").value.trim();
+      if (!user || !pass) return alert("Enter both username and password");
+
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: user, password: pass })
+      });
+
+      if (res.ok) {
+        myUsername = user;
+        openDashboard();
+      } else {
+        const err = await res.text();
+        alert(err);
+      }
+    }
+
+    function openDashboard() {
+      document.getElementById("user-display").innerText = myUsername;
+      showView("dashboard-view");
+      loadLeaderboard();
+      connectWebSocket();
+    }
+
+    async function loadLeaderboard() {
+      const tbody = document.getElementById("leaderboard-body");
+      tbody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
+
+      try {
+        const res = await fetch("/api/leaderboard");
+        const data = await res.json();
+
+        if (data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4">No games played yet</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = data.map(player => `
+          <tr>
+            <td><strong>${player.username}</strong></td>
+            <td style="color: #10b981;">${player.wins}</td>
+            <td style="color: #ef4444;">${player.losses}</td>
+            <td style="color: #f59e0b;">${player.draws}</td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="4">Failed to load</td></tr>';
+      }
+    }
+
     function connectWebSocket() {
+      if (ws && ws.readyState === WebSocket.OPEN) return;
+
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
       ws = new WebSocket(`${protocol}//${location.host}/ws?username=${myUsername}`);
 
@@ -142,6 +253,39 @@
             break;
         }
       };
+    }
+
+    function startNewGame() {
+      showView("game-view");
+      resetGameUI();
+    }
+
+    function returnToDashboard() {
+      showView("dashboard-view");
+      loadLeaderboard();
+      resetGameUI();
+    }
+
+    function logout() {
+      if (ws) {
+        ws.close();
+      }
+      myUsername = "";
+      document.getElementById("login-username").value = "";
+      document.getElementById("login-password").value = "";
+      document.getElementById("reg-username").value = "";
+      document.getElementById("reg-password").value = "";
+      showView("login-view");
+    }
+
+    function resetGameUI() {
+      document.getElementById("board").classList.add("hidden");
+      document.getElementById("retry-btn").classList.add("hidden");
+      document.getElementById("new-opp-btn").classList.add("hidden");
+      document.getElementById("find-btn").classList.remove("hidden");
+      document.getElementById("find-btn").disabled = false;
+      document.getElementById("retry-msg").innerText = "";
+      updateStatus("Click to Search Player");
     }
 
     function setupMatch(msg) {

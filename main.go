@@ -24,6 +24,13 @@ type RegisterRequest struct {
 	Password string `json:"password"`
 }
 
+type LeaderboardEntry struct {
+	Username string `json:"username"`
+	Wins     int    `json:"wins"`
+	Losses   int    `json:"losses"`
+	Draws    int    `json:"draws"`
+}
+
 type Message struct {
 	Type     string    `json:"type"`               // "JOIN_QUEUE", "MOVE", "MATCH_FOUND", "GAME_STATE", "GAME_OVER", "RETRY_REQUESTED", "RESTART_GAME", "OPPONENT_LEFT", "ERROR"
 	Position int       `json:"position,omitempty"` // 0 to 8
@@ -73,6 +80,7 @@ func main() {
 
 	http.HandleFunc("/api/register", handleRegister)
 	http.HandleFunc("/api/login", handleLogin)
+	http.HandleFunc("/api/leaderboard", handleLeaderboard)
 	http.HandleFunc("/ws", handleWebSocket)
 	http.Handle("/", http.FileServer(http.Dir("./public")))
 
@@ -105,7 +113,6 @@ func initDB() {
 
 	fmt.Println("✅ Connected to PostgreSQL database successfully!")
 
-	// Creates users table automatically if it doesn't exist
 	tableQuery := `
 	CREATE TABLE IF NOT EXISTS users (
 		id SERIAL PRIMARY KEY,
@@ -122,7 +129,7 @@ func initDB() {
 	}
 }
 
-// --- AUTH HANDLERS ---
+// --- AUTH & LEADERBOARD HANDLERS ---
 
 func handleRegister(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -178,6 +185,37 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "authenticated", "username": req.Username})
+}
+
+func handleLeaderboard(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	rows, err := db.Query("SELECT username, wins, losses, draws FROM users ORDER BY wins DESC, draws DESC, losses ASC LIMIT 10")
+	if err != nil {
+		http.Error(w, "Failed to fetch leaderboard", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	leaderboard := make([]LeaderboardEntry, 0)
+	for rows.Next() {
+		var entry LeaderboardEntry
+		if err := rows.Scan(&entry.Username, &entry.Wins, &entry.Losses, &entry.Draws); err == nil {
+			leaderboard = append(leaderboard, entry)
+		}
+	}
+
+	// Fixes sqlrowserr warning
+	if err := rows.Err(); err != nil {
+		http.Error(w, "Error iterating leaderboard rows", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(leaderboard)
 }
 
 // --- WEBSOCKET HANDLER ---
@@ -363,9 +401,12 @@ func (c *Client) leaveCurrentRoom() {
 	defer r.Mu.Unlock()
 
 	var opponent *Client
-	if c == r.PlayerX {
+
+	// Fixes QF1003 tagged switch warning
+	switch c {
+	case r.PlayerX:
 		opponent = r.PlayerO
-	} else if c == r.PlayerO {
+	case r.PlayerO:
 		opponent = r.PlayerX
 	}
 
@@ -412,7 +453,6 @@ func (r *GameRoom) handleMove(c *Client, pos int) {
 		r.PlayerX.safeSend(stateMsg)
 		r.PlayerO.safeSend(stateMsg)
 
-		// Record match result in PostgreSQL without blocking gameplay
 		go saveGameResult(r.PlayerX.Username, r.PlayerO.Username, winner)
 		return
 	}
@@ -437,13 +477,15 @@ func saveGameResult(userX, userO, winner string) {
 		return
 	}
 
-	if winner == "X" {
+	// Fixes QF1003 tagged switch warning
+	switch winner {
+	case "X":
 		_, _ = db.Exec("UPDATE users SET wins = wins + 1 WHERE username = $1", userX)
 		_, _ = db.Exec("UPDATE users SET losses = losses + 1 WHERE username = $1", userO)
-	} else if winner == "O" {
+	case "O":
 		_, _ = db.Exec("UPDATE users SET wins = wins + 1 WHERE username = $1", userO)
 		_, _ = db.Exec("UPDATE users SET losses = losses + 1 WHERE username = $1", userX)
-	} else if winner == "DRAW" {
+	case "DRAW":
 		_, _ = db.Exec("UPDATE users SET draws = draws + 1 WHERE username = $1", userX)
 		_, _ = db.Exec("UPDATE users SET draws = draws + 1 WHERE username = $1", userO)
 	}
@@ -457,10 +499,12 @@ func (r *GameRoom) handleRetry(c *Client) {
 		return
 	}
 
-	if c == r.PlayerX {
+	// Fixes QF1003 tagged switch warning
+	switch c {
+	case r.PlayerX:
 		r.RetryX = true
 		r.PlayerO.safeSend(Message{Type: "RETRY_REQUESTED", Message: "Opponent wants a rematch!"})
-	} else if c == r.PlayerO {
+	case r.PlayerO:
 		r.RetryO = true
 		r.PlayerX.safeSend(Message{Type: "RETRY_REQUESTED", Message: "Opponent wants a rematch!"})
 	}
