@@ -1,26 +1,59 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cyberpunk Tic Tac Toe</title>
   <style>
-    :root {
+    /* Dark Theme Palette (Default) */
+    [data-theme="dark"] {
       --bg-color: #090d16;
-      --card-bg: rgba(22, 31, 49, 0.75);
+      --bg-gradient: radial-gradient(circle at 50% 20%, #1e1b4b 0%, #090d16 80%);
+      --card-bg: rgba(22, 31, 49, 0.8);
       --card-border: rgba(255, 255, 255, 0.1);
+      --input-bg: rgba(15, 23, 42, 0.6);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --heading-gradient: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+      --btn-sec-bg: rgba(255, 255, 255, 0.08);
+      --btn-sec-hover: rgba(255, 255, 255, 0.15);
+      --cell-bg: rgba(30, 41, 59, 0.7);
+      --cell-hover: rgba(51, 65, 85, 0.8);
+      --table-header: rgba(15, 23, 42, 0.8);
       --accent-blue: #38bdf8;
       --accent-cyan: #06b6d4;
       --accent-pink: #ec4899;
       --accent-green: #10b981;
       --accent-amber: #f59e0b;
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
+      --shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Light Theme Palette */
+    [data-theme="light"] {
+      --bg-color: #f1f5f9;
+      --bg-gradient: radial-gradient(circle at 50% 20%, #e2e8f0 0%, #cbd5e1 80%);
+      --card-bg: rgba(255, 255, 255, 0.85);
+      --card-border: rgba(0, 0, 0, 0.08);
+      --input-bg: rgba(241, 245, 249, 0.9);
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --heading-gradient: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+      --btn-sec-bg: rgba(0, 0, 0, 0.06);
+      --btn-sec-hover: rgba(0, 0, 0, 0.12);
+      --cell-bg: rgba(226, 232, 240, 0.8);
+      --cell-hover: rgba(203, 213, 225, 1);
+      --table-header: rgba(226, 232, 240, 0.9);
+      --accent-blue: #0284c7;
+      --accent-cyan: #0891b2;
+      --accent-pink: #db2777;
+      --accent-green: #059669;
+      --accent-amber: #d97706;
+      --shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
     }
 
     * {
       box-sizing: border-box;
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease, transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     body {
@@ -29,11 +62,40 @@
       justify-content: center;
       align-items: center;
       min-height: 100vh;
-      background: radial-gradient(circle at 50% 20%, #1e1b4b 0%, #090d16 80%);
+      background: var(--bg-gradient);
       color: var(--text-main);
       margin: 0;
       padding: 1.5rem;
       overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Floating Theme Switcher Button */
+    .theme-toggle-btn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 8px 14px;
+      border-radius: 30px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: auto;
+      margin-top: 0;
+    }
+
+    .theme-toggle-btn:hover {
+      transform: scale(1.05);
     }
 
     .card {
@@ -43,7 +105,7 @@
       border: 1px solid var(--card-border);
       padding: 2.2rem;
       border-radius: 20px;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      box-shadow: var(--shadow);
       text-align: center;
       width: 360px;
       animation: fadeInSlide 0.4s ease-out forwards;
@@ -59,7 +121,7 @@
       font-size: 1.75rem;
       font-weight: 700;
       letter-spacing: -0.5px;
-      background: linear-gradient(135deg, #fff 0%, var(--text-muted) 100%);
+      background: var(--heading-gradient);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
@@ -70,8 +132,8 @@
       margin-top: 10px;
       border-radius: 10px;
       border: 1px solid var(--card-border);
-      background: rgba(15, 23, 42, 0.6);
-      color: #fff;
+      background: var(--input-bg);
+      color: var(--text-main);
       font-size: 0.95rem;
       outline: none;
     }
@@ -105,19 +167,19 @@
     }
 
     button.btn-sec {
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--btn-sec-bg);
       color: var(--text-main);
       box-shadow: none;
       border: 1px solid var(--card-border);
     }
 
     button.btn-sec:hover:not(:disabled) {
-      background: rgba(255, 255, 255, 0.15);
+      background: var(--btn-sec-hover);
     }
 
     button:disabled {
-      background: #334155;
-      color: #64748b;
+      background: #94a3b8;
+      color: #cbd5e1;
       cursor: not-allowed;
       box-shadow: none;
     }
@@ -132,14 +194,14 @@
       text-decoration: none;
       font-size: 0.88rem;
       cursor: pointer;
+      font-weight: 500;
     }
 
     .link-btn:hover {
-      color: #7dd3fc;
-      text-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+      text-decoration: underline;
     }
 
-    /* Pulsing Searching Animation */
+    /* Searching Spinner */
     .search-loader {
       width: 50px;
       height: 50px;
@@ -166,8 +228,8 @@
     .cell {
       width: 90px;
       height: 90px;
-      background: rgba(30, 41, 59, 0.7);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      background: var(--cell-bg);
+      border: 1px solid var(--card-border);
       font-size: 2.8rem;
       font-weight: 800;
       display: flex;
@@ -179,19 +241,19 @@
     }
 
     .cell:hover {
-      background: rgba(51, 65, 85, 0.8);
+      background: var(--cell-hover);
       transform: scale(1.03);
     }
 
     .cell.pop-x {
       color: var(--accent-cyan);
-      text-shadow: 0 0 15px rgba(6, 182, 212, 0.6);
+      text-shadow: 0 0 15px rgba(6, 182, 212, 0.5);
       animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
 
     .cell.pop-o {
       color: var(--accent-pink);
-      text-shadow: 0 0 15px rgba(236, 72, 153, 0.6);
+      text-shadow: 0 0 15px rgba(236, 72, 153, 0.5);
       animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
 
@@ -212,12 +274,12 @@
 
     .leaderboard-table th, .leaderboard-table td {
       padding: 10px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid var(--card-border);
       text-align: center;
     }
 
     .leaderboard-table th {
-      background: rgba(15, 23, 42, 0.8);
+      background: var(--table-header);
       color: var(--accent-blue);
       font-weight: 600;
     }
@@ -228,6 +290,11 @@
   </style>
 </head>
 <body>
+
+  <!-- Floating Theme Switcher Button -->
+  <button class="theme-toggle-btn" onclick="toggleTheme()">
+    <span id="theme-icon">☀️</span> <span id="theme-text">Light Mode</span>
+  </button>
 
   <!-- LOGIN -->
   <div class="card" id="login-view">
@@ -306,6 +373,16 @@
     let mySymbol = "";
     let currentTurn = "";
 
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute("data-theme");
+      const next = current === "dark" ? "light" : "dark";
+      
+      html.setAttribute("data-theme", next);
+      document.getElementById("theme-icon").innerText = next === "dark" ? "☀️" : "🌙";
+      document.getElementById("theme-text").innerText = next === "dark" ? "Light Mode" : "Dark Mode";
+    }
+
     function showView(viewId) {
       document.getElementById("login-view").classList.add("hidden");
       document.getElementById("register-view").classList.add("hidden");
@@ -315,7 +392,7 @@
       const target = document.getElementById(viewId);
       target.classList.remove("hidden");
       target.style.animation = 'none';
-      target.offsetHeight; // trigger reflow
+      target.offsetHeight;
       target.style.animation = null;
     }
 
@@ -532,7 +609,7 @@
       const cells = document.querySelectorAll(".cell");
       board.forEach((val, i) => {
         cells[i].innerText = val;
-        cells[i].className = "cell"; // Reset animation classes
+        cells[i].className = "cell";
         if (val === "X") cells[i].classList.add("pop-x");
         if (val === "O") cells[i].classList.add("pop-o");
       });
