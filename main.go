@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -9,12 +10,18 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
+	_ "github.com/lib/pq"
+	"golang.org/x/crypto/bcrypt"
 )
+
+// --- GLOBAL DATABASE HANDLE ---
+var db *sql.DB
 
 // --- DATA STRUCTURES ---
 
 type RegisterRequest struct {
 	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 type Message struct {
@@ -53,8 +60,6 @@ type GameRoom struct {
 // --- GLOBAL STATE ---
 
 var (
-	users      = make(map[string]bool)
-	usersMu    sync.Mutex
 	matchQueue = make(chan *Client, 100)
 	leaveQueue = make(chan *Client, 100)
 	upgrader   = websocket.Upgrader{
@@ -63,9 +68,11 @@ var (
 )
 
 func main() {
+	initDB()
 	go matchmaker()
 
 	http.HandleFunc("/api/register", handleRegister)
+	http.HandleFunc("/api/login", handleLogin)
 	http.HandleFunc("/ws", handleWebSocket)
 	http.Handle("/", http.FileServer(http.Dir("./public")))
 
@@ -77,7 +84,45 @@ func main() {
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
 
-// --- HTTP HANDLERS ---
+// --- DATABASE CONNECTION & SETUP ---
+
+func initDB() {
+	connStr := os.Getenv("DATABASE_URL")
+	if connStr == "" {
+		log.Println("⚠️ DATABASE_URL not set, database features will fail if not provided.")
+		return
+	}
+
+	var err error
+	db, err = sql.Open("postgres", connStr)
+	if err != nil {
+		log.Fatal("Failed to connect to PostgreSQL:", err)
+	}
+
+	if err = db.Ping(); err != nil {
+		log.Fatal("PostgreSQL ping failed:", err)
+	}
+
+	fmt.Println("✅ Connected to PostgreSQL database successfully!")
+
+	// Creates users table automatically if it doesn't exist
+	tableQuery := `
+	CREATE TABLE IF NOT EXISTS users (
+		id SERIAL PRIMARY KEY,
+		username VARCHAR(50) UNIQUE NOT NULL,
+		password_hash TEXT NOT NULL,
+		wins INT DEFAULT 0,
+		losses INT DEFAULT 0,
+		draws INT DEFAULT 0,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);`
+	_, err = db.Exec(tableQuery)
+	if err != nil {
+		log.Fatal("Failed to create users table:", err)
+	}
+}
+
+// --- AUTH HANDLERS ---
 
 func handleRegister(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -86,33 +131,67 @@ func handleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req RegisterRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Username == "" {
-		http.Error(w, "Invalid username", http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Username == "" || req.Password == "" {
+		http.Error(w, "Username and password required", http.StatusBadRequest)
 		return
 	}
 
-	usersMu.Lock()
-	defer usersMu.Unlock()
-
-	if users[req.Username] {
-		http.Error(w, "Username already taken", http.StatusConflict)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
 	}
 
-	users[req.Username] = true
+	_, err = db.Exec("INSERT INTO users (username, password_hash) VALUES ($1, $2)", req.Username, string(hashedPassword))
+	if err != nil {
+		http.Error(w, "Username already exists", http.StatusConflict)
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "registered", "username": req.Username})
 }
 
-// --- WEBSOCKET & BULLETPROOF MATCHMAKING ---
+func handleLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req RegisterRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid input", http.StatusBadRequest)
+		return
+	}
+
+	var storedHash string
+	err := db.QueryRow("SELECT password_hash FROM users WHERE username = $1", req.Username).Scan(&storedHash)
+	if err != nil {
+		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(req.Password)); err != nil {
+		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "authenticated", "username": req.Username})
+}
+
+// --- WEBSOCKET HANDLER ---
 
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	username := r.URL.Query().Get("username")
-	usersMu.Lock()
-	registered := users[username]
-	usersMu.Unlock()
+	if username == "" {
+		http.Error(w, "Username required", http.StatusBadRequest)
+		return
+	}
 
-	if !registered {
+	var exists bool
+	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username=$1)", username).Scan(&exists)
+	if err != nil || !exists {
 		http.Error(w, "Unauthorized player", http.StatusUnauthorized)
 		return
 	}
@@ -147,7 +226,6 @@ func matchmaker() {
 	for {
 		select {
 		case client := <-matchQueue:
-			// Remove any old/duplicate instances of this user or pointer from queue
 			cleaned := make([]*Client, 0, len(waiting))
 			for _, w := range waiting {
 				if w != client && w.Username != client.Username {
@@ -174,7 +252,6 @@ func processMatches(waiting []*Client) []*Client {
 		p1 := waiting[0]
 		matchedIdx := -1
 
-		// Priority 1: Search for an opponent with a DIFFERENT username who is NOT p1's last opponent
 		for i := 1; i < len(waiting); i++ {
 			if waiting[i].Username != p1.Username && waiting[i].Username != p1.LastOpponent {
 				matchedIdx = i
@@ -182,7 +259,6 @@ func processMatches(waiting []*Client) []*Client {
 			}
 		}
 
-		// Priority 2: Fallback to matching with last opponent if no other player exists
 		if matchedIdx == -1 {
 			for i := 1; i < len(waiting); i++ {
 				if waiting[i].Username != p1.Username {
@@ -192,14 +268,12 @@ func processMatches(waiting []*Client) []*Client {
 			}
 		}
 
-		// Stop if no valid distinct opponent is found
 		if matchedIdx == -1 {
 			break
 		}
 
 		p2 := waiting[matchedIdx]
 
-		// Remove p1 and p2 from waiting list
 		newWaiting := make([]*Client, 0, len(waiting)-2)
 		for idx, w := range waiting {
 			if idx != 0 && idx != matchedIdx {
@@ -235,15 +309,10 @@ func startMatch(p1, p2 *Client) {
 	p2.safeSend(Message{Type: "MATCH_FOUND", Symbol: "O", Turn: "X", Opponent: p1.Username})
 }
 
-// --- GAME & ROOM LIFECYCLE LOGIC ---
+// --- GAME LIFECYCLE & STATS RECORDING ---
 
 func (c *Client) readPump() {
 	defer func() {
-		// Clean up username on disconnect so player can re-register/refresh
-		usersMu.Lock()
-		delete(users, c.Username)
-		usersMu.Unlock()
-
 		leaveQueue <- c
 		c.leaveCurrentRoom()
 		c.Conn.Close()
@@ -342,6 +411,9 @@ func (r *GameRoom) handleMove(c *Client, pos int) {
 		}
 		r.PlayerX.safeSend(stateMsg)
 		r.PlayerO.safeSend(stateMsg)
+
+		// Record match result in PostgreSQL without blocking gameplay
+		go saveGameResult(r.PlayerX.Username, r.PlayerO.Username, winner)
 		return
 	}
 
@@ -358,6 +430,23 @@ func (r *GameRoom) handleMove(c *Client, pos int) {
 	}
 	r.PlayerX.safeSend(broadcastMsg)
 	r.PlayerO.safeSend(broadcastMsg)
+}
+
+func saveGameResult(userX, userO, winner string) {
+	if db == nil {
+		return
+	}
+
+	if winner == "X" {
+		_, _ = db.Exec("UPDATE users SET wins = wins + 1 WHERE username = $1", userX)
+		_, _ = db.Exec("UPDATE users SET losses = losses + 1 WHERE username = $1", userO)
+	} else if winner == "O" {
+		_, _ = db.Exec("UPDATE users SET wins = wins + 1 WHERE username = $1", userO)
+		_, _ = db.Exec("UPDATE users SET losses = losses + 1 WHERE username = $1", userX)
+	} else if winner == "DRAW" {
+		_, _ = db.Exec("UPDATE users SET draws = draws + 1 WHERE username = $1", userX)
+		_, _ = db.Exec("UPDATE users SET draws = draws + 1 WHERE username = $1", userO)
+	}
 }
 
 func (r *GameRoom) handleRetry(c *Client) {
