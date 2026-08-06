@@ -27,6 +27,8 @@
       --accent-amber: #f59e0b;
       --shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
       --sun-color: #f59e0b;
+      --chat-my-msg: #0284c7;
+      --chat-opp-msg: #334155;
     }
 
     /* Light Theme Palette */
@@ -51,6 +53,8 @@
       --accent-amber: #d97706;
       --shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
       --moon-color: #ffffff;
+      --chat-my-msg: #0284c7;
+      --chat-opp-msg: #cbd5e1;
     }
 
     * {
@@ -73,7 +77,6 @@
       position: relative;
     }
 
-    /* Fireworks Overlay Canvas */
     #confetti-canvas {
       position: fixed;
       top: 0;
@@ -84,7 +87,6 @@
       z-index: 9999;
     }
 
-    /* Top Left Nav (Back to Dashboard) */
     .top-left-nav {
       position: fixed;
       top: 20px;
@@ -92,7 +94,6 @@
       z-index: 1000;
     }
 
-    /* Minimalist SVG Theme Toggle Button */
     .theme-toggle-btn {
       position: fixed;
       top: 20px;
@@ -224,7 +225,7 @@
       text-decoration: underline;
     }
 
-    /* Independent Scoreboard Box */
+    /* Scoreboard Box */
     .scoreboard-card {
       width: 380px;
       margin-bottom: 16px;
@@ -294,6 +295,74 @@
       font-weight: 800;
       color: var(--text-muted);
       opacity: 0.6;
+    }
+
+    /* Chatbox Component */
+    .chat-card {
+      width: 380px;
+      margin-top: 16px;
+      padding: 1rem;
+      text-align: left;
+    }
+
+    .chat-header {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--accent-blue);
+      margin-bottom: 8px;
+    }
+
+    .chat-messages {
+      height: 120px;
+      overflow-y: auto;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 8px;
+      background: var(--input-bg);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .chat-msg {
+      max-width: 80%;
+      padding: 6px 10px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      word-break: break-word;
+    }
+
+    .chat-msg.me {
+      align-self: flex-end;
+      background: var(--chat-my-msg);
+      color: #fff;
+      border-bottom-right-radius: 2px;
+    }
+
+    .chat-msg.them {
+      align-self: flex-start;
+      background: var(--chat-opp-msg);
+      color: var(--text-main);
+      border-bottom-left-radius: 2px;
+    }
+
+    .chat-input-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .chat-input-row input {
+      margin-top: 0;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+    }
+
+    .chat-input-row button {
+      margin-top: 0;
+      width: 70px;
+      padding: 8px;
+      font-size: 0.85rem;
     }
 
     /* Searching Spinner */
@@ -395,16 +464,12 @@
 
   <canvas id="confetti-canvas"></canvas>
 
-  <!-- External Upper Left Back-to-Dashboard Navigation -->
   <div id="top-left-nav" class="top-left-nav hidden">
     <button class="btn-sec" onclick="returnToDashboard()">← Back to Dashboard</button>
   </div>
 
-  <!-- Minimal Icon Theme Switcher -->
   <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn" aria-label="Toggle Theme">
-    <!-- Default Sun Icon -->
     <svg id="icon-sun" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--sun-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-    <!-- Moon Icon for Light Mode -->
     <svg id="icon-moon" class="hidden" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--moon-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
   </button>
 
@@ -454,7 +519,7 @@
     </table>
   </div>
 
-  <!-- SEPARATE LIVE SCOREBOARD CARD -->
+  <!-- SCOREBOARD CARD -->
   <div id="scoreboard-card" class="card scoreboard-card hidden">
     <div class="scoreboard">
       <div class="player-card">
@@ -485,7 +550,7 @@
     </div>
   </div>
 
-  <!-- SEPARATE MAIN GAME BOX CARD -->
+  <!-- MAIN GAME CARD -->
   <div class="card hidden" id="game-view">
     <div id="search-spinner" class="search-loader hidden"></div>
     <div id="status">Click to Search Player</div>
@@ -505,6 +570,16 @@
       <div class="cell" onclick="makeMove(6)"></div>
       <div class="cell" onclick="makeMove(7)"></div>
       <div class="cell" onclick="makeMove(8)"></div>
+    </div>
+  </div>
+
+  <!-- LIVE CHATBOX CARD -->
+  <div id="chat-card" class="card chat-card hidden">
+    <div class="chat-header">💬 Live Match Chat</div>
+    <div id="chat-messages" class="chat-messages"></div>
+    <div class="chat-input-row">
+      <input type="text" id="chat-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendChat()" />
+      <button onclick="sendChat()">Send</button>
     </div>
   </div>
 
@@ -541,6 +616,7 @@
       document.getElementById("dashboard-view").classList.add("hidden");
       document.getElementById("game-view").classList.add("hidden");
       document.getElementById("scoreboard-card").classList.add("hidden");
+      document.getElementById("chat-card").classList.add("hidden");
       document.getElementById("top-left-nav").classList.add("hidden");
 
       if (viewId === "game-view") {
@@ -679,10 +755,15 @@
             updateStatus(`Rematch Started! Turn: Player [${currentTurn}]`);
             break;
 
+          case "CHAT":
+            appendChatMessage(msg.sender, msg.message);
+            break;
+
           case "OPPONENT_LEFT":
             updateStatus(msg.message);
             document.getElementById("board").classList.add("hidden");
             document.getElementById("scoreboard-card").classList.add("hidden");
+            document.getElementById("chat-card").classList.add("hidden");
             document.getElementById("retry-btn").classList.add("hidden");
             document.getElementById("new-opp-btn").classList.add("hidden");
             document.getElementById("find-btn").classList.remove("hidden");
@@ -724,12 +805,14 @@
     function resetGameUI() {
       document.getElementById("board").classList.add("hidden");
       document.getElementById("scoreboard-card").classList.add("hidden");
+      document.getElementById("chat-card").classList.add("hidden");
       document.getElementById("retry-btn").classList.add("hidden");
       document.getElementById("new-opp-btn").classList.add("hidden");
       document.getElementById("search-spinner").classList.add("hidden");
       document.getElementById("find-btn").classList.remove("hidden");
       document.getElementById("find-btn").disabled = false;
       document.getElementById("retry-msg").innerText = "";
+      document.getElementById("chat-messages").innerHTML = "";
       updateStatus("Click to Search Player");
     }
 
@@ -744,7 +827,9 @@
       document.getElementById("new-opp-btn").classList.add("hidden");
       document.getElementById("board").classList.remove("hidden");
       document.getElementById("scoreboard-card").classList.remove("hidden");
+      document.getElementById("chat-card").classList.remove("hidden");
       document.getElementById("retry-msg").innerText = "";
+      document.getElementById("chat-messages").innerHTML = "";
 
       updateScoreboard();
       renderBoard(["", "", "", "", "", "", "", "", ""]);
@@ -764,12 +849,34 @@
       document.getElementById("sb-p2-score").innerText = p2SessionScore;
     }
 
+    function sendChat() {
+      const input = document.getElementById("chat-input");
+      const text = input.value.trim();
+      if (!text || !ws) return;
+
+      ws.send(JSON.stringify({ type: "CHAT", message: text }));
+      input.value = "";
+    }
+
+    function appendChatMessage(sender, text) {
+      const container = document.getElementById("chat-messages");
+      const isMe = sender === myUsername;
+
+      const msgDiv = document.createElement("div");
+      msgDiv.className = `chat-msg ${isMe ? "me" : "them"}`;
+      msgDiv.innerText = isMe ? text : `${sender}: ${text}`;
+
+      container.appendChild(msgDiv);
+      container.scrollTop = container.scrollHeight;
+    }
+
     function findMatch() {
       ws.send(JSON.stringify({ type: "JOIN_QUEUE" }));
       document.getElementById("find-btn").classList.remove("hidden");
       document.getElementById("find-btn").disabled = true;
       document.getElementById("search-spinner").classList.remove("hidden");
       document.getElementById("scoreboard-card").classList.add("hidden");
+      document.getElementById("chat-card").classList.add("hidden");
       document.getElementById("retry-btn").classList.add("hidden");
       document.getElementById("new-opp-btn").classList.add("hidden");
       document.getElementById("board").classList.add("hidden");
@@ -808,7 +915,6 @@
       document.getElementById("status").innerText = txt;
     }
 
-    /* Confetti & Fireworks Particle Engine */
     function triggerFireworks() {
       const canvas = document.getElementById("confetti-canvas");
       const ctx = canvas.getContext("2d");
@@ -840,7 +946,7 @@
             active = true;
             p.x += p.vx;
             p.y += p.vy;
-            p.vy += 0.25; // gravity
+            p.vy += 0.25;
             p.alpha -= p.decay;
 
             ctx.globalAlpha = Math.max(p.alpha, 0);

@@ -14,10 +14,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// --- GLOBAL DATABASE HANDLE ---
 var db *sql.DB
-
-// --- DATA STRUCTURES ---
 
 type RegisterRequest struct {
 	Username string `json:"username"`
@@ -32,7 +29,7 @@ type LeaderboardEntry struct {
 }
 
 type Message struct {
-	Type     string    `json:"type"`               // "JOIN_QUEUE", "MOVE", "MATCH_FOUND", "GAME_STATE", "GAME_OVER", "RETRY_REQUESTED", "RESTART_GAME", "OPPONENT_LEFT", "ERROR"
+	Type     string    `json:"type"`               // "JOIN_QUEUE", "MOVE", "MATCH_FOUND", "GAME_STATE", "GAME_OVER", "RETRY_REQUESTED", "RESTART_GAME", "OPPONENT_LEFT", "CHAT", "ERROR"
 	Position int       `json:"position,omitempty"` // 0 to 8
 	Symbol   string    `json:"symbol,omitempty"`   // "X" or "O"
 	Turn     string    `json:"turn,omitempty"`     // "X" or "O"
@@ -41,6 +38,7 @@ type Message struct {
 	Opponent string    `json:"opponent,omitempty"`
 	Error    string    `json:"error,omitempty"`
 	Message  string    `json:"message,omitempty"`
+	Sender   string    `json:"sender,omitempty"`
 }
 
 type Client struct {
@@ -63,8 +61,6 @@ type GameRoom struct {
 	RetryO   bool
 	Mu       sync.Mutex
 }
-
-// --- GLOBAL STATE ---
 
 var (
 	matchQueue = make(chan *Client, 100)
@@ -91,8 +87,6 @@ func main() {
 	fmt.Printf("🚀 Game server running on port %s\n", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
-
-// --- DATABASE CONNECTION & SETUP ---
 
 func initDB() {
 	connStr := os.Getenv("DATABASE_URL")
@@ -128,8 +122,6 @@ func initDB() {
 		log.Fatal("Failed to create users table:", err)
 	}
 }
-
-// --- AUTH & LEADERBOARD HANDLERS ---
 
 func handleRegister(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -208,7 +200,6 @@ func handleLeaderboard(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Fixes sqlrowserr warning
 	if err := rows.Err(); err != nil {
 		http.Error(w, "Error iterating leaderboard rows", http.StatusInternalServerError)
 		return
@@ -217,8 +208,6 @@ func handleLeaderboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(leaderboard)
 }
-
-// --- WEBSOCKET HANDLER ---
 
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	username := r.URL.Query().Get("username")
@@ -347,8 +336,6 @@ func startMatch(p1, p2 *Client) {
 	p2.safeSend(Message{Type: "MATCH_FOUND", Symbol: "O", Turn: "X", Opponent: p1.Username})
 }
 
-// --- GAME LIFECYCLE & STATS RECORDING ---
-
 func (c *Client) readPump() {
 	defer func() {
 		leaveQueue <- c
@@ -377,6 +364,11 @@ func (c *Client) readPump() {
 			if c.Room != nil {
 				c.Room.handleRetry(c)
 			}
+
+		case "CHAT":
+			if c.Room != nil && msg.Message != "" {
+				c.Room.handleChat(c, msg.Message)
+			}
 		}
 	}
 }
@@ -402,7 +394,6 @@ func (c *Client) leaveCurrentRoom() {
 
 	var opponent *Client
 
-	// Fixes QF1003 tagged switch warning
 	switch c {
 	case r.PlayerX:
 		opponent = r.PlayerO
@@ -472,12 +463,25 @@ func (r *GameRoom) handleMove(c *Client, pos int) {
 	r.PlayerO.safeSend(broadcastMsg)
 }
 
+func (r *GameRoom) handleChat(c *Client, text string) {
+	r.Mu.Lock()
+	defer r.Mu.Unlock()
+
+	chatMsg := Message{
+		Type:    "CHAT",
+		Message: text,
+		Sender:  c.Username,
+	}
+
+	r.PlayerX.safeSend(chatMsg)
+	r.PlayerO.safeSend(chatMsg)
+}
+
 func saveGameResult(userX, userO, winner string) {
 	if db == nil {
 		return
 	}
 
-	// Fixes QF1003 tagged switch warning
 	switch winner {
 	case "X":
 		_, _ = db.Exec("UPDATE users SET wins = wins + 1 WHERE username = $1", userX)
@@ -499,7 +503,6 @@ func (r *GameRoom) handleRetry(c *Client) {
 		return
 	}
 
-	// Fixes QF1003 tagged switch warning
 	switch c {
 	case r.PlayerX:
 		r.RetryX = true
