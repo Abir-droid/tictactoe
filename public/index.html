@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Realtime Tic Tac Toe</title>
+  <style>
+    body { font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; background: #0f172a; color: #f8fafc; margin: 0; padding: 2rem; }
+    .card { background: #1e293b; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; width: 320px; }
+    input, button { width: 100%; padding: 10px; margin-top: 8px; border-radius: 6px; border: none; font-size: 1rem; box-sizing: border-box; }
+    button { background: #3b82f6; color: white; cursor: pointer; font-weight: bold; }
+    button:disabled { background: #475569; cursor: not-allowed; }
+    .btn-retry { background: #10b981; margin-top: 10px; }
+    .btn-retry:hover { background: #059669; }
+    .btn-new { background: #f59e0b; margin-top: 8px; }
+    .btn-new:hover { background: #d97706; }
+    .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 20px; }
+    .cell { width: 90px; height: 90px; background: #334155; font-size: 2.5rem; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 8px; user-select: none; }
+    .cell:hover { background: #475569; }
+    .hidden { display: none; }
+    #status { margin-top: 15px; font-weight: 600; color: #38bdf8; }
+    #retry-msg { margin-top: 10px; font-size: 0.9rem; color: #f59e0b; }
+  </style>
+</head>
+<body>
+
+  <div class="card" id="auth-section">
+    <h2>Tic Tac Toe</h2>
+    <input type="text" id="username" placeholder="Enter username" />
+    <button onclick="register()">Register & Play</button>
+  </div>
+
+  <div class="card hidden" id="game-section">
+    <div id="status">Click to Search Player</div>
+    <div id="retry-msg"></div>
+    
+    <button id="find-btn" onclick="findMatch()">Find Opponent</button>
+    <button id="retry-btn" class="btn-retry hidden" onclick="requestRetry()">Play Again 🔄</button>
+    <button id="new-opp-btn" class="btn-new hidden" onclick="findMatch()">Find New Opponent 🔍</button>
+
+    <div class="board hidden" id="board">
+      <div class="cell" onclick="makeMove(0)"></div>
+      <div class="cell" onclick="makeMove(1)"></div>
+      <div class="cell" onclick="makeMove(2)"></div>
+      <div class="cell" onclick="makeMove(3)"></div>
+      <div class="cell" onclick="makeMove(4)"></div>
+      <div class="cell" onclick="makeMove(5)"></div>
+      <div class="cell" onclick="makeMove(6)"></div>
+      <div class="cell" onclick="makeMove(7)"></div>
+      <div class="cell" onclick="makeMove(8)"></div>
+    </div>
+  </div>
+
+  <script>
+    let ws;
+    let myUsername = "";
+    let mySymbol = "";
+    let currentTurn = "";
+
+    async function register() {
+      const user = document.getElementById("username").value.trim();
+      if (!user) return alert("Enter username");
+
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: user })
+      });
+
+      if (res.ok) {
+        myUsername = user;
+        document.getElementById("auth-section").classList.add("hidden");
+        document.getElementById("game-section").classList.remove("hidden");
+        connectWebSocket();
+      } else {
+        const err = await res.text();
+        alert(err);
+      }
+    }
+
+    function connectWebSocket() {
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${protocol}//${location.host}/ws?username=${myUsername}`);
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+
+        switch (msg.type) {
+          case "MATCH_FOUND":
+            setupMatch(msg);
+            break;
+
+          case "GAME_STATE":
+            currentTurn = msg.turn;
+            renderBoard(msg.board);
+            updateStatus(`You are [${mySymbol}]. Current Turn: ${currentTurn}`);
+            break;
+
+          case "GAME_OVER":
+            renderBoard(msg.board);
+            if (msg.winner === "DRAW") {
+              updateStatus("Game Over: It's a Draw!");
+            } else if (msg.winner === mySymbol) {
+              updateStatus("🎉 You Won!");
+            } else {
+              updateStatus("❌ You Lost!");
+            }
+            document.getElementById("retry-btn").classList.remove("hidden");
+            document.getElementById("retry-btn").disabled = false;
+            document.getElementById("new-opp-btn").classList.remove("hidden");
+            break;
+
+          case "RETRY_REQUESTED":
+            document.getElementById("retry-msg").innerText = msg.message;
+            break;
+
+          case "RESTART_GAME":
+            document.getElementById("retry-btn").classList.add("hidden");
+            document.getElementById("new-opp-btn").classList.add("hidden");
+            document.getElementById("retry-msg").innerText = "";
+            mySymbol = msg.symbol;
+            currentTurn = msg.turn;
+            renderBoard(msg.board);
+            updateStatus(`Rematch Started! You are [${mySymbol}]. Turn: ${currentTurn}`);
+            break;
+
+          case "OPPONENT_LEFT":
+            updateStatus(msg.message);
+            document.getElementById("board").classList.add("hidden");
+            document.getElementById("retry-btn").classList.add("hidden");
+            document.getElementById("new-opp-btn").classList.add("hidden");
+            document.getElementById("find-btn").classList.remove("hidden");
+            document.getElementById("find-btn").disabled = false;
+            document.getElementById("retry-msg").innerText = "";
+            break;
+
+          case "ERROR":
+            alert(msg.error);
+            break;
+        }
+      };
+    }
+
+    function setupMatch(msg) {
+      mySymbol = msg.symbol;
+      currentTurn = msg.turn;
+      document.getElementById("find-btn").classList.add("hidden");
+      document.getElementById("retry-btn").classList.add("hidden");
+      document.getElementById("new-opp-btn").classList.add("hidden");
+      document.getElementById("board").classList.remove("hidden");
+      document.getElementById("retry-msg").innerText = "";
+      renderBoard(["", "", "", "", "", "", "", "", ""]);
+      updateStatus(`Matched vs ${msg.opponent}! You are [${mySymbol}]. Turn: ${currentTurn}`);
+    }
+
+    function findMatch() {
+      ws.send(JSON.stringify({ type: "JOIN_QUEUE" }));
+      document.getElementById("find-btn").classList.remove("hidden");
+      document.getElementById("find-btn").disabled = true;
+      document.getElementById("retry-btn").classList.add("hidden");
+      document.getElementById("new-opp-btn").classList.add("hidden");
+      document.getElementById("board").classList.add("hidden");
+      document.getElementById("retry-msg").innerText = "";
+      updateStatus("Searching for another player...");
+    }
+
+    function requestRetry() {
+      ws.send(JSON.stringify({ type: "RETRY" }));
+      document.getElementById("retry-btn").disabled = true;
+      updateStatus("Waiting for opponent to accept rematch...");
+    }
+
+    function makeMove(position) {
+      if (currentTurn !== mySymbol) return;
+      ws.send(JSON.stringify({ type: "MOVE", position }));
+    }
+
+    function renderBoard(board) {
+      const cells = document.querySelectorAll(".cell");
+      board.forEach((val, i) => cells[i].innerText = val);
+    }
+
+    function updateStatus(txt) {
+      document.getElementById("status").innerText = txt;
+    }
+  </script>
+</body>
+</html>

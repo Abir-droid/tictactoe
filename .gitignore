@@ -1,0 +1,7 @@
+# Compiled binary
+server
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
