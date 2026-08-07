@@ -392,15 +392,19 @@ function makeMove(position) {
 function renderBoard(board) {
   const cells = document.querySelectorAll(".cell");
   board.forEach((val, i) => {
-    cells[i].className = "cell";
-    if (val === "X") {
-      cells[i].innerHTML = svgIconX;
-      cells[i].classList.add("pop-x");
-    } else if (val === "O") {
-      cells[i].innerHTML = svgIconO;
-      cells[i].classList.add("pop-o");
-    } else {
-      cells[i].innerHTML = "";
+    const cell = cells[i];
+    const hasX = cell.classList.contains("pop-x");
+    const hasO = cell.classList.contains("pop-o");
+
+    if (val === "X" && !hasX) {
+      cell.innerHTML = svgIconX;
+      cell.className = "cell pop-x";
+    } else if (val === "O" && !hasO) {
+      cell.innerHTML = svgIconO;
+      cell.className = "cell pop-o";
+    } else if (val === "") {
+      cell.innerHTML = "";
+      cell.className = "cell";
     }
   });
 }
