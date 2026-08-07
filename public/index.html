@@ -2,19 +2,19 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Cyberpunk Tic Tac Toe</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CYBER TAC TOE</title>
   <style>
     /* Dark Theme Palette (Default) */
     [data-theme="dark"] {
       --bg-color: #090d16;
       --bg-gradient: radial-gradient(circle at 50% 20%, #1e1b4b 0%, #090d16 80%);
-      --card-bg: rgba(22, 31, 49, 0.85);
+      --card-bg: rgba(22, 31, 49, 0.8);
       --card-border: rgba(255, 255, 255, 0.1);
       --input-bg: rgba(15, 23, 42, 0.6);
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
-      --heading-gradient: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+      --heading-gradient: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
       --btn-sec-bg: rgba(255, 255, 255, 0.08);
       --btn-sec-hover: rgba(255, 255, 255, 0.15);
       --cell-bg: rgba(30, 41, 59, 0.7);
@@ -25,8 +25,9 @@
       --accent-pink: #ec4899;
       --accent-green: #10b981;
       --accent-amber: #f59e0b;
-      --shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+      --shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
       --sun-color: #f59e0b;
+      --moon-color: #f59e0b;
       --chat-my-msg: #0284c7;
       --chat-opp-msg: #334155;
     }
@@ -35,12 +36,12 @@
     [data-theme="light"] {
       --bg-color: #f1f5f9;
       --bg-gradient: radial-gradient(circle at 50% 20%, #e2e8f0 0%, #cbd5e1 80%);
-      --card-bg: rgba(255, 255, 255, 0.9);
+      --card-bg: rgba(255, 255, 255, 0.85);
       --card-border: rgba(0, 0, 0, 0.08);
       --input-bg: rgba(241, 245, 249, 0.9);
       --text-main: #0f172a;
       --text-muted: #475569;
-      --heading-gradient: linear-gradient(135deg, #0284c7 0%, #4f46e5 100%);
+      --heading-gradient: linear-gradient(135deg, #0f172a 0%, #334155 100%);
       --btn-sec-bg: rgba(0, 0, 0, 0.06);
       --btn-sec-hover: rgba(0, 0, 0, 0.12);
       --cell-bg: rgba(226, 232, 240, 0.8);
@@ -51,31 +52,36 @@
       --accent-pink: #db2777;
       --accent-green: #059669;
       --accent-amber: #d97706;
-      --shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-      --moon-color: #ffffff;
+      --shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+      --sun-color: #d97706;
+      --moon-color: #d97706;
       --chat-my-msg: #0284c7;
       --chat-opp-msg: #cbd5e1;
     }
 
     * {
       box-sizing: border-box;
-      transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease, transform 0.2s ease;
+      transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease, transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     body {
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       display: flex;
       flex-direction: column;
+      justify-content: center;
       align-items: center;
-      justify-content: flex-start;
       min-height: 100vh;
       background: var(--bg-gradient);
       color: var(--text-main);
       margin: 0;
-      padding: 1.5rem 1rem 3rem 1rem;
+      padding: 1.5rem;
       overflow-x: hidden;
       position: relative;
     }
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 4px; }
 
     #confetti-canvas {
       position: fixed;
@@ -87,59 +93,49 @@
       z-index: 9999;
     }
 
-    /* Fixed App Header Layout */
-    .app-header {
-      width: 100%;
-      max-width: 420px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-top: 1vh;
-      margin-bottom: 1.25rem;
-      position: relative;
-      min-height: 48px;
-    }
-
-    .app-title {
-      font-size: 1.6rem;
-      font-weight: 800;
-      letter-spacing: 1px;
+    .hero-title {
+      font-size: 2.2rem;
+      font-weight: 900;
+      letter-spacing: 2px;
       text-transform: uppercase;
-      background: var(--heading-gradient);
+      background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-blue) 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      margin: 0;
-      text-align: center;
-      flex-grow: 1;
+      margin-bottom: 20px;
+      text-shadow: 0 0 25px rgba(56, 189, 248, 0.2);
     }
 
-    .nav-btn-wrapper {
-      min-width: 44px;
-      display: flex;
-      align-items: center;
+    .top-left-nav {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 1000;
     }
 
     .theme-toggle-btn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
       background: var(--card-bg);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border: 1px solid var(--card-border);
       color: var(--text-main);
-      width: 42px;
-      height: 42px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
       cursor: pointer;
       box-shadow: var(--shadow);
+      z-index: 1000;
       display: flex;
       align-items: center;
       justify-content: center;
       margin: 0;
       padding: 0;
-      flex-shrink: 0;
     }
 
     .theme-toggle-btn:hover {
-      transform: scale(1.08);
+      transform: scale(1.1);
     }
 
     .card {
@@ -147,24 +143,22 @@
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border: 1px solid var(--card-border);
-      padding: 1.5rem;
+      padding: 2rem;
       border-radius: 20px;
       box-shadow: var(--shadow);
       text-align: center;
-      width: 100%;
-      max-width: 420px;
-      animation: fadeInSlide 0.35s ease-out forwards;
-      margin-bottom: 1rem;
+      width: 380px;
+      animation: fadeInSlide 0.4s ease-out forwards;
     }
 
     @keyframes fadeInSlide {
-      from { opacity: 0; transform: translateY(10px) scale(0.98); }
+      from { opacity: 0; transform: translateY(15px) scale(0.98); }
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
     h2 {
       margin-top: 0;
-      font-size: 1.5rem;
+      font-size: 1.75rem;
       font-weight: 700;
       letter-spacing: -0.5px;
       background: var(--heading-gradient);
@@ -174,7 +168,7 @@
 
     input {
       width: 100%;
-      padding: 12px 14px;
+      padding: 12px 16px;
       margin-top: 10px;
       border-radius: 10px;
       border: 1px solid var(--card-border);
@@ -186,7 +180,7 @@
 
     input:focus {
       border-color: var(--accent-blue);
-      box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
     }
 
     button {
@@ -195,7 +189,7 @@
       margin-top: 12px;
       border-radius: 10px;
       border: none;
-      font-size: 0.95rem;
+      font-size: 1rem;
       font-weight: 600;
       cursor: pointer;
       background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
@@ -205,7 +199,7 @@
 
     button:hover:not(:disabled) {
       transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
     }
 
     button:active:not(:disabled) {
@@ -218,8 +212,7 @@
       box-shadow: none;
       border: 1px solid var(--card-border);
       width: auto;
-      padding: 8px 14px;
-      font-size: 0.85rem;
+      padding: 8px 16px;
     }
 
     button.btn-sec:hover:not(:disabled) {
@@ -238,7 +231,7 @@
 
     .link-btn {
       display: inline-block;
-      margin-top: 12px;
+      margin-top: 14px;
       color: var(--accent-blue);
       text-decoration: none;
       font-size: 0.88rem;
@@ -250,8 +243,42 @@
       text-decoration: underline;
     }
 
+    /* Profile Stats Panel */
+    .profile-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin: 12px 0 18px 0;
+    }
+
+    .stat-badge {
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 8px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .stat-val {
+      font-weight: 800;
+      font-size: 1.1rem;
+    }
+
+    .stat-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    /* Scoreboard Box */
     .scoreboard-card {
-      padding: 1rem;
+      width: 380px;
+      margin-bottom: 16px;
+      padding: 1.2rem;
     }
 
     .scoreboard {
@@ -263,12 +290,12 @@
     .player-card {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
 
     .player-avatar {
-      width: 36px;
-      height: 36px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       background: var(--btn-sec-bg);
       border: 1px solid var(--card-border);
@@ -291,7 +318,7 @@
       font-size: 0.85rem;
       font-weight: 700;
       color: var(--text-main);
-      max-width: 90px;
+      max-width: 80px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -306,10 +333,10 @@
     .tag-o { color: var(--accent-pink); }
 
     .score-badge {
-      font-size: 1.15rem;
+      font-size: 1.2rem;
       font-weight: 800;
       color: var(--text-main);
-      padding: 0 4px;
+      padding: 0 6px;
     }
 
     .vs-divider {
@@ -319,20 +346,59 @@
       opacity: 0.6;
     }
 
+    /* Freely Draggable Floating Chat Window */
     .chat-card {
-      padding: 1rem;
+      position: fixed;
+      top: 100px;
+      left: 20px;
+      width: 330px;
+      padding: 1.2rem;
       text-align: left;
+      z-index: 2500;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      touch-action: none;
     }
 
-    .chat-header {
-      font-size: 0.85rem;
+    .chat-header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      cursor: move;
+      padding: 4px 6px;
+      background: var(--btn-sec-bg);
+      border-radius: 8px;
+      user-select: none;
+    }
+
+    .chat-header-title {
+      font-size: 0.88rem;
       font-weight: 700;
       color: var(--accent-blue);
-      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .chat-close-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.1rem;
+      padding: 0 4px;
+      width: auto;
+      margin: 0;
+      box-shadow: none;
+    }
+
+    .chat-close-btn:hover {
+      color: #ef4444;
+      transform: none;
     }
 
     .chat-messages {
-      height: 110px;
+      height: 180px;
       overflow-y: auto;
       border: 1px solid var(--card-border);
       border-radius: 10px;
@@ -346,8 +412,8 @@
     .chat-msg {
       max-width: 85%;
       padding: 6px 10px;
-      border-radius: 10px;
-      font-size: 0.82rem;
+      border-radius: 12px;
+      font-size: 0.85rem;
       word-break: break-word;
     }
 
@@ -365,10 +431,33 @@
       border-bottom-left-radius: 2px;
     }
 
+    .emoji-bar {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .emoji-pill {
+      background: var(--btn-sec-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .emoji-pill:hover {
+      background: var(--btn-sec-hover);
+      transform: scale(1.1);
+    }
+
     .chat-input-row {
       display: flex;
       gap: 8px;
-      margin-top: 8px;
+      margin-top: 6px;
     }
 
     .chat-input-row input {
@@ -379,19 +468,68 @@
 
     .chat-input-row button {
       margin-top: 0;
-      width: 70px;
+      width: 65px;
       padding: 8px;
       font-size: 0.85rem;
     }
 
+    .chat-drawer-toggle {
+      position: fixed;
+      bottom: 25px;
+      left: 25px;
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      z-index: 1000;
+    }
+
+    .chat-drawer-toggle:hover {
+      transform: scale(1.1);
+    }
+
+    .chat-popup {
+      position: fixed;
+      bottom: 85px;
+      left: 25px;
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--accent-blue);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      padding: 10px 14px;
+      border-radius: 14px;
+      max-width: 260px;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      z-index: 1001;
+      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .chat-popup-sender {
+      font-weight: 700;
+      color: var(--accent-cyan);
+      margin-bottom: 2px;
+      font-size: 0.78rem;
+    }
+
+    /* Searching Spinner */
     .search-loader {
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
       border: 3px solid rgba(56, 189, 248, 0.2);
       border-radius: 50%;
       border-top-color: var(--accent-blue);
       animation: spin 1s infinite linear;
-      margin: 12px auto;
+      margin: 15px auto;
     }
 
     @keyframes spin {
@@ -399,19 +537,17 @@
       100% { transform: rotate(360deg); }
     }
 
-    /* Board Responsive Grid */
+    /* Board & Cells */
     .board {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin: 15px auto 0 auto;
-      justify-content: center;
-      width: max-content;
+      gap: 12px;
+      margin-top: 15px;
     }
 
     .cell {
-      width: clamp(75px, 22vw, 95px);
-      height: clamp(75px, 22vw, 95px);
+      width: 90px;
+      height: 90px;
       background: var(--cell-bg);
       border: 1px solid var(--card-border);
       display: flex;
@@ -424,12 +560,12 @@
 
     .cell:hover {
       background: var(--cell-hover);
-      transform: scale(1.02);
+      transform: scale(1.03);
     }
 
     .cell svg {
-      width: clamp(34px, 10vw, 44px);
-      height: clamp(34px, 10vw, 44px);
+      width: 42px;
+      height: 42px;
       stroke-width: 2.2;
       stroke-linecap: round;
       stroke-linejoin: round;
@@ -453,17 +589,18 @@
       100% { transform: scale(1); opacity: 1; }
     }
 
+    /* Leaderboard Table */
     .leaderboard-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 10px;
+      margin-top: 8px;
       font-size: 0.85rem;
       border-radius: 10px;
       overflow: hidden;
     }
 
     .leaderboard-table th, .leaderboard-table td {
-      padding: 8px 6px;
+      padding: 8px 4px;
       border-bottom: 1px solid var(--card-border);
       text-align: center;
     }
@@ -475,47 +612,25 @@
     }
 
     .hidden { display: none !important; }
-    #status { margin-top: 8px; font-weight: 600; font-size: 0.95rem; color: var(--accent-blue); }
-    #retry-msg { margin-top: 6px; font-size: 0.85rem; color: var(--accent-amber); }
-
-    /* Extra Mobile Tweaks */
-    @media (max-width: 480px) {
-      body {
-        padding: 0.75rem 0.75rem 2rem 0.75rem;
-      }
-      .app-title {
-        font-size: 1.35rem;
-      }
-      .card {
-        padding: 1.25rem 1rem;
-        border-radius: 16px;
-      }
-      button {
-        padding: 11px;
-        font-size: 0.9rem;
-      }
-    }
+    #status { margin-top: 10px; font-weight: 600; font-size: 0.95rem; color: var(--accent-blue); }
+    #retry-msg { margin-top: 8px; font-size: 0.9rem; color: var(--accent-amber); }
   </style>
 </head>
 <body>
 
   <canvas id="confetti-canvas"></canvas>
 
-  <!-- App Header bar -->
-  <div class="app-header">
-    <div class="nav-btn-wrapper">
-      <div id="top-left-nav" class="hidden">
-        <button class="btn-sec" onclick="returnToDashboard()">← Back</button>
-      </div>
-    </div>
-    <h1 class="app-title">Cyber Tac Toe</h1>
-    <div class="nav-btn-wrapper" style="justify-content: flex-end;">
-      <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn" aria-label="Toggle Theme">
-        <svg id="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--sun-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-        <svg id="icon-moon" class="hidden" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--moon-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-      </button>
-    </div>
+  <div id="hero-branding" class="hero-title">CYBER TAC TOE</div>
+
+  <div id="top-left-nav" class="top-left-nav hidden">
+    <button class="btn-sec" onclick="returnToDashboard()">← Back to Dashboard</button>
   </div>
+
+  <!-- Minimal Icon Theme Switcher -->
+  <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn" aria-label="Toggle Theme">
+    <svg id="icon-sun" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--sun-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+    <svg id="icon-moon" class="hidden" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--moon-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+  </button>
 
   <!-- LOGIN -->
   <div class="card" id="login-view">
@@ -533,7 +648,7 @@
     <h2>Create Account</h2>
     <input type="text" id="reg-username" placeholder="Username" />
     <input type="password" id="reg-password" placeholder="Password" />
-    <button onclick="register()">Register / Create Account</button>
+    <button onclick="register()">Register Account</button>
     <div>
       <a class="link-btn" onclick="showView('login-view')">Already have an account? Login</a>
     </div>
@@ -541,13 +656,31 @@
 
   <!-- DASHBOARD -->
   <div class="card hidden" id="dashboard-view">
-    <h2 style="margin-bottom: 2px;">Welcome</h2>
-    <div id="user-display" style="color: var(--accent-cyan); font-weight: 700; font-size: 1.15rem; margin-bottom: 12px;"></div>
+    <div id="user-display" style="color: var(--accent-cyan); font-weight: 700; font-size: 1.25rem; margin-bottom: 8px;"></div>
 
-    <button onclick="startNewGame()">New Game 🎮</button>
-    <button class="btn-sec" style="width: 100%; margin-top: 8px;" onclick="logout()">Logout 🚪</button>
+    <div class="profile-stats-grid">
+      <div class="stat-badge">
+        <span id="prof-wins" class="stat-val" style="color: var(--accent-green);">0</span>
+        <span class="stat-label">Wins</span>
+      </div>
+      <div class="stat-badge">
+        <span id="prof-losses" class="stat-val" style="color: #ef4444;">0</span>
+        <span class="stat-label">Losses</span>
+      </div>
+      <div class="stat-badge">
+        <span id="prof-draws" class="stat-val" style="color: var(--accent-amber);">0</span>
+        <span class="stat-label">Draws</span>
+      </div>
+      <div class="stat-badge">
+        <span id="prof-total" class="stat-val" style="color: var(--accent-blue);">0</span>
+        <span class="stat-label">Total</span>
+      </div>
+    </div>
 
-    <h3 style="margin-top: 20px; margin-bottom: 8px; font-size: 0.95rem; color: var(--text-muted);">🏆 Global Leaderboard</h3>
+    <button onclick="startNewGame()">New Game</button>
+    <button class="btn-sec" style="width: 100%; margin-top: 10px;" onclick="logout()">Logout</button>
+
+    <h3 style="margin-top: 20px; margin-bottom: 6px; font-size: 0.95rem; color: var(--text-muted);">🏆 Top 10 Leaderboard</h3>
     <table class="leaderboard-table">
       <thead>
         <tr>
@@ -555,20 +688,21 @@
           <th>W</th>
           <th>L</th>
           <th>D</th>
+          <th>Total</th>
         </tr>
       </thead>
       <tbody id="leaderboard-body">
-        <tr><td colspan="4">Loading...</td></tr>
+        <tr><td colspan="5">Loading...</td></tr>
       </tbody>
     </table>
   </div>
 
-  <!-- SCOREBOARD CARD -->
+  <!-- SEPARATE LIVE SCOREBOARD CARD -->
   <div id="scoreboard-card" class="card scoreboard-card hidden">
     <div class="scoreboard">
       <div class="player-card">
         <div class="player-avatar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
         </div>
         <div class="player-details">
           <span id="sb-p1-name" class="player-name">You</span>
@@ -588,19 +722,18 @@
           <span id="sb-p2-sym" class="player-tag tag-o">Symbol O</span>
         </div>
         <div class="player-avatar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 1-3-3.87"></path><path d="M4 21v-2a4 4 0 0 1 3-3.87"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 1-3-3.87"></path><path d="M4 21v-2a4 4 0 0 1 3-3.87"></path><circle cx="12" cy="7" r="4"></circle></svg>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- MAIN GAME CARD -->
+  <!-- MAIN CENTERED GAME CARD -->
   <div class="card hidden" id="game-view">
     <div id="search-spinner" class="search-loader hidden"></div>
-    <div id="status">Click to Search Player</div>
+    <div id="status">Searching for another player...</div>
     <div id="retry-msg"></div>
     
-    <button id="find-btn" onclick="findMatch()">Find Opponent</button>
     <button id="retry-btn" class="btn-retry hidden" onclick="requestRetry()">Play Again 🔄</button>
     <button id="new-opp-btn" class="btn-new hidden" onclick="findMatch()">Find New Opponent 🔍</button>
 
@@ -617,15 +750,40 @@
     </div>
   </div>
 
-  <!-- LIVE CHATBOX CARD -->
+  <!-- FREELY DRAGGABLE CHAT WINDOW -->
   <div id="chat-card" class="card chat-card hidden">
-    <div class="chat-header">💬 Live Match Chat</div>
+    <div class="chat-header-bar" id="chat-header">
+      <span class="chat-header-title">✋ 💬 Match Chat</span>
+      <button class="chat-close-btn" onclick="toggleChatDrawer(false)">✕</button>
+    </div>
     <div id="chat-messages" class="chat-messages"></div>
+    
+    <div class="emoji-bar">
+      <span class="emoji-pill" onclick="quickSendEmoji('👍')">👍</span>
+      <span class="emoji-pill" onclick="quickSendEmoji('😎')">😎</span>
+      <span class="emoji-pill" onclick="quickSendEmoji('🔥')">🔥</span>
+      <span class="emoji-pill" onclick="quickSendEmoji('👏')">👏</span>
+      <span class="emoji-pill" onclick="quickSendEmoji('😂')">😂</span>
+      <span class="emoji-pill" onclick="quickSendEmoji('🎯')">🎯</span>
+      <span class="emoji-pill" onclick="quickSendEmoji('GG')">GG</span>
+    </div>
+
     <div class="chat-input-row">
-      <input type="text" id="chat-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendChat()" />
+      <input type="text" id="chat-input" placeholder="Message..." onkeydown="if(event.key==='Enter') sendChat()" />
       <button onclick="sendChat()">Send</button>
     </div>
   </div>
+
+  <!-- FLOATING CHAT PREVIEW POPUP -->
+  <div id="chat-popup" class="chat-popup hidden">
+    <div id="popup-sender" class="chat-popup-sender"></div>
+    <div id="popup-text"></div>
+  </div>
+
+  <!-- FLOATING CHAT ICON TOGGLE -->
+  <button id="chat-toggle-btn" class="chat-drawer-toggle hidden" onclick="toggleChatDrawer()">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+  </button>
 
   <script>
     let ws;
@@ -635,9 +793,20 @@
     let opponentUsername = "";
     let p1SessionScore = 0;
     let p2SessionScore = 0;
+    let isChatOpen = false;
+    let popupTimer = null;
 
     const svgIconX = `<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
     const svgIconO = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>`;
+
+    window.addEventListener("DOMContentLoaded", () => {
+      initDraggableChat();
+      const savedUser = localStorage.getItem("cyber_game_user");
+      if (savedUser) {
+        myUsername = savedUser;
+        openDashboard();
+      }
+    });
 
     function toggleTheme() {
       const html = document.documentElement;
@@ -661,7 +830,9 @@
       document.getElementById("game-view").classList.add("hidden");
       document.getElementById("scoreboard-card").classList.add("hidden");
       document.getElementById("chat-card").classList.add("hidden");
+      document.getElementById("chat-toggle-btn").classList.add("hidden");
       document.getElementById("top-left-nav").classList.add("hidden");
+      document.getElementById("chat-popup").classList.add("hidden");
 
       if (viewId === "game-view") {
         document.getElementById("game-view").classList.remove("hidden");
@@ -684,6 +855,7 @@
 
       if (res.ok) {
         myUsername = user;
+        localStorage.setItem("cyber_game_user", user);
         openDashboard();
       } else {
         const err = await res.text();
@@ -704,6 +876,7 @@
 
       if (res.ok) {
         myUsername = user;
+        localStorage.setItem("cyber_game_user", user);
         openDashboard();
       } else {
         const err = await res.text();
@@ -715,19 +888,35 @@
       document.getElementById("user-display").innerText = myUsername;
       showView("dashboard-view");
       loadLeaderboard();
+      loadProfileStats();
       connectWebSocket();
+    }
+
+    async function loadProfileStats() {
+      try {
+        const res = await fetch(`/api/profile?username=${encodeURIComponent(myUsername)}`);
+        if (res.ok) {
+          const stats = await res.json();
+          document.getElementById("prof-wins").innerText = stats.wins;
+          document.getElementById("prof-losses").innerText = stats.losses;
+          document.getElementById("prof-draws").innerText = stats.draws;
+          document.getElementById("prof-total").innerText = stats.total;
+        }
+      } catch (e) {
+        console.error("Failed to load profile stats", e);
+      }
     }
 
     async function loadLeaderboard() {
       const tbody = document.getElementById("leaderboard-body");
-      tbody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
 
       try {
         const res = await fetch("/api/leaderboard");
         const data = await res.json();
 
         if (data.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="4">No games played yet</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="5">No games played yet</td></tr>';
           return;
         }
 
@@ -737,10 +926,11 @@
             <td style="color: var(--accent-green);">${player.wins}</td>
             <td style="color: #ef4444;">${player.losses}</td>
             <td style="color: var(--accent-amber);">${player.draws}</td>
+            <td style="color: var(--accent-blue); font-weight: 700;">${player.total !== undefined ? player.total : (player.wins + player.losses + player.draws)}</td>
           </tr>
         `).join('');
       } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="4">Failed to load</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5">Failed to load</td></tr>';
       }
     }
 
@@ -808,10 +998,9 @@
             document.getElementById("board").classList.add("hidden");
             document.getElementById("scoreboard-card").classList.add("hidden");
             document.getElementById("chat-card").classList.add("hidden");
+            document.getElementById("chat-toggle-btn").classList.add("hidden");
             document.getElementById("retry-btn").classList.add("hidden");
             document.getElementById("new-opp-btn").classList.add("hidden");
-            document.getElementById("find-btn").classList.remove("hidden");
-            document.getElementById("find-btn").disabled = false;
             document.getElementById("search-spinner").classList.add("hidden");
             document.getElementById("retry-msg").innerText = "";
             break;
@@ -832,11 +1021,16 @@
     function startNewGame() {
       showView("game-view");
       resetGameUI();
+      findMatch();
     }
 
     function returnToDashboard() {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "LEAVE_QUEUE" }));
+      }
       showView("dashboard-view");
       loadLeaderboard();
+      loadProfileStats();
       resetGameUI();
     }
 
@@ -846,6 +1040,7 @@
         ws.close();
       }
       myUsername = "";
+      localStorage.removeItem("cyber_game_user");
       document.getElementById("login-username").value = "";
       document.getElementById("login-password").value = "";
       document.getElementById("reg-username").value = "";
@@ -857,14 +1052,14 @@
       document.getElementById("board").classList.add("hidden");
       document.getElementById("scoreboard-card").classList.add("hidden");
       document.getElementById("chat-card").classList.add("hidden");
+      document.getElementById("chat-toggle-btn").classList.add("hidden");
       document.getElementById("retry-btn").classList.add("hidden");
       document.getElementById("new-opp-btn").classList.add("hidden");
       document.getElementById("search-spinner").classList.add("hidden");
-      document.getElementById("find-btn").classList.remove("hidden");
-      document.getElementById("find-btn").disabled = false;
       document.getElementById("retry-msg").innerText = "";
       document.getElementById("chat-messages").innerHTML = "";
-      updateStatus("Click to Search Player");
+      isChatOpen = false;
+      updateStatus("Searching for another player...");
     }
 
     function setupMatch(msg) {
@@ -873,12 +1068,11 @@
       opponentUsername = msg.opponent;
 
       document.getElementById("search-spinner").classList.add("hidden");
-      document.getElementById("find-btn").classList.add("hidden");
       document.getElementById("retry-btn").classList.add("hidden");
       document.getElementById("new-opp-btn").classList.add("hidden");
       document.getElementById("board").classList.remove("hidden");
       document.getElementById("scoreboard-card").classList.remove("hidden");
-      document.getElementById("chat-card").classList.remove("hidden");
+      document.getElementById("chat-toggle-btn").classList.remove("hidden");
       document.getElementById("retry-msg").innerText = "";
       document.getElementById("chat-messages").innerHTML = "";
 
@@ -900,6 +1094,22 @@
       document.getElementById("sb-p2-score").innerText = p2SessionScore;
     }
 
+    function toggleChatDrawer(forcedState) {
+      if (typeof forcedState === 'boolean') {
+        isChatOpen = forcedState;
+      } else {
+        isChatOpen = !isChatOpen;
+      }
+
+      const chatCard = document.getElementById("chat-card");
+      if (isChatOpen) {
+        chatCard.classList.remove("hidden");
+        document.getElementById("chat-popup").classList.add("hidden");
+      } else {
+        chatCard.classList.add("hidden");
+      }
+    }
+
     function sendChat() {
       const input = document.getElementById("chat-input");
       const text = input.value.trim();
@@ -907,6 +1117,11 @@
 
       ws.send(JSON.stringify({ type: "CHAT", message: text }));
       input.value = "";
+    }
+
+    function quickSendEmoji(emoji) {
+      if (!ws) return;
+      ws.send(JSON.stringify({ type: "CHAT", message: emoji }));
     }
 
     function appendChatMessage(sender, text) {
@@ -919,15 +1134,31 @@
 
       container.appendChild(msgDiv);
       container.scrollTop = container.scrollHeight;
+
+      if (!isMe && !isChatOpen) {
+        showChatPopup(sender, text);
+      }
+    }
+
+    function showChatPopup(sender, text) {
+      const popup = document.getElementById("chat-popup");
+      document.getElementById("popup-sender").innerText = sender;
+      document.getElementById("popup-text").innerText = text;
+
+      popup.classList.remove("hidden");
+
+      if (popupTimer) clearTimeout(popupTimer);
+      popupTimer = setTimeout(() => {
+        popup.classList.add("hidden");
+      }, 4000);
     }
 
     function findMatch() {
       ws.send(JSON.stringify({ type: "JOIN_QUEUE" }));
-      document.getElementById("find-btn").classList.remove("hidden");
-      document.getElementById("find-btn").disabled = true;
       document.getElementById("search-spinner").classList.remove("hidden");
       document.getElementById("scoreboard-card").classList.add("hidden");
       document.getElementById("chat-card").classList.add("hidden");
+      document.getElementById("chat-toggle-btn").classList.add("hidden");
       document.getElementById("retry-btn").classList.add("hidden");
       document.getElementById("new-opp-btn").classList.add("hidden");
       document.getElementById("board").classList.add("hidden");
@@ -964,6 +1195,44 @@
 
     function updateStatus(txt) {
       document.getElementById("status").innerText = txt;
+    }
+
+    function initDraggableChat() {
+      const el = document.getElementById("chat-card");
+      const handle = document.getElementById("chat-header");
+      let p1 = 0, p2 = 0, p3 = 0, p4 = 0;
+
+      handle.onmousedown = (e) => {
+        e.preventDefault();
+        p3 = e.clientX;
+        p4 = e.clientY;
+        document.onmouseup = () => { document.onmouseup = null; document.onmousemove = null; };
+        document.onmousemove = (e) => {
+          e.preventDefault();
+          p1 = p3 - e.clientX;
+          p2 = p4 - e.clientY;
+          p3 = e.clientX;
+          p4 = e.clientY;
+          el.style.top = (el.offsetTop - p2) + "px";
+          el.style.left = (el.offsetLeft - p1) + "px";
+        };
+      };
+
+      handle.ontouchstart = (e) => {
+        const touch = e.touches[0];
+        p3 = touch.clientX;
+        p4 = touch.clientY;
+        document.ontouchend = () => { document.ontouchend = null; document.ontouchmove = null; };
+        document.ontouchmove = (e) => {
+          const touch = e.touches[0];
+          p1 = p3 - touch.clientX;
+          p2 = p4 - touch.clientY;
+          p3 = touch.clientX;
+          p4 = touch.clientY;
+          el.style.top = (el.offsetTop - p2) + "px";
+          el.style.left = (el.offsetLeft - p1) + "px";
+        };
+      };
     }
 
     function triggerFireworks() {
