@@ -589,3 +589,11 @@ button:disabled {
 .hidden { display: none !important; }
 #status { margin-top: 10px; font-weight: 600; font-size: 0.95rem; color: var(--accent-blue); }
 #retry-msg { margin-top: 8px; font-size: 0.9rem; color: var(--accent-amber); }
+
+/* Active Player Turn Highlight */
+.player-avatar.active-turn {
+  background: rgba(16, 185, 129, 0.25) !important;
+  border-color: var(--accent-green) !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+  color: var(--accent-green);
+}

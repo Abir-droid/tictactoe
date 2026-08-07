@@ -13,6 +13,12 @@ const svgIconO = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circl
 
 window.addEventListener("DOMContentLoaded", () => {
   initDraggableChat();
+
+  // Load saved theme preference
+  const savedTheme = localStorage.getItem("cyber_game_theme") || "dark";
+  applyTheme(savedTheme);
+
+  // Auto-login persistent session
   const savedUser = localStorage.getItem("cyber_game_user");
   if (savedUser) {
     myUsername = savedUser;
@@ -20,19 +26,24 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-function toggleTheme() {
+function applyTheme(theme) {
   const html = document.documentElement;
-  const current = html.getAttribute("data-theme");
-  const next = current === "dark" ? "light" : "dark";
-  
-  html.setAttribute("data-theme", next);
-  if (next === "light") {
+  html.setAttribute("data-theme", theme);
+  if (theme === "light") {
     document.getElementById("icon-sun").classList.add("hidden");
     document.getElementById("icon-moon").classList.remove("hidden");
   } else {
     document.getElementById("icon-moon").classList.add("hidden");
     document.getElementById("icon-sun").classList.remove("hidden");
   }
+}
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute("data-theme");
+  const next = current === "dark" ? "light" : "dark";
+  localStorage.setItem("cyber_game_theme", next);
+  applyTheme(next);
 }
 
 function showView(viewId) {
@@ -166,6 +177,7 @@ function connectWebSocket() {
         currentTurn = msg.turn;
         renderBoard(msg.board);
         updateStatus(`Turn: Player [${currentTurn}]`);
+        updateScoreboard();
         break;
 
       case "GAME_OVER":
@@ -180,6 +192,7 @@ function connectWebSocket() {
           p2SessionScore++;
           updateStatus("❌ Defeat!");
         }
+        currentTurn = ""; // Reset turn indicator
         updateScoreboard();
         document.getElementById("retry-btn").classList.remove("hidden");
         document.getElementById("retry-btn").disabled = false;
@@ -304,6 +317,18 @@ function updateScoreboard() {
   document.getElementById("sb-p2-sym").innerText = `[${oppSymbol}]`;
   document.getElementById("sb-p2-sym").className = `player-tag ${oppSymbol === 'X' ? 'tag-x' : 'tag-o'}`;
   document.getElementById("sb-p2-score").innerText = p2SessionScore;
+
+  // Turn Avatar Highlight
+  const p1Avatar = document.getElementById("sb-p1-avatar");
+  const p2Avatar = document.getElementById("sb-p2-avatar");
+  p1Avatar.classList.remove("active-turn");
+  p2Avatar.classList.remove("active-turn");
+
+  if (currentTurn === mySymbol) {
+    p1Avatar.classList.add("active-turn");
+  } else if (currentTurn === oppSymbol) {
+    p2Avatar.classList.add("active-turn");
+  }
 }
 
 function toggleChatDrawer(forcedState) {
