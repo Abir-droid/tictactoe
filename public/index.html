@@ -46,6 +46,12 @@
   <div class="card hidden" id="dashboard-view">
     <div id="user-display" style="color: var(--accent-cyan); font-weight: 700; font-size: 1.25rem; margin-bottom: 8px;"></div>
 
+    <!-- Active Ongoing Game Banner -->
+    <div id="rejoin-banner" class="rejoin-banner hidden">
+      <span>🎮 Ongoing match vs <strong id="rejoin-opp-name">Opponent</strong></span>
+      <button class="btn-retry" style="margin-top: 6px;" onclick="rejoinOngoingGame()">Rejoin Game ⚡</button>
+    </div>
+
     <div class="profile-stats-grid">
       <div class="stat-badge">
         <span id="prof-wins" class="stat-val" style="color: var(--accent-green);">0</span>
@@ -126,6 +132,11 @@
     <button id="new-opp-btn" class="btn-new hidden" onclick="findMatch()">Find New Opponent 🔍</button>
 
     <div class="board hidden" id="board">
+      <!-- Animated SVG Winning Line Overlay -->
+      <svg id="win-line-svg" class="win-line-svg hidden">
+        <line id="win-line" class="win-line" x1="0" y1="0" x2="0" y2="0" />
+      </svg>
+
       <div class="cell" onclick="makeMove(0)"></div>
       <div class="cell" onclick="makeMove(1)"></div>
       <div class="cell" onclick="makeMove(2)"></div>

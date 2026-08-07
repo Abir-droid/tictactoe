@@ -19,6 +19,7 @@ const (
 	writeWait  = 10 * time.Second
 	pongWait   = 60 * time.Second
 	pingPeriod = (pongWait * 9) / 10
+	gracePeriod = 60 * time.Second
 )
 
 var db *sql.DB
@@ -44,7 +45,7 @@ type UserStats struct {
 }
 
 type Message struct {
-	Type     string    `json:"type"` // "JOIN_QUEUE", "LEAVE_QUEUE", "MOVE", "MATCH_FOUND", "GAME_STATE", "GAME_OVER", "RETRY_REQUESTED", "RESTART_GAME", "OPPONENT_LEFT", "CHAT", "ERROR"
+	Type     string    `json:"type"` // "JOIN_QUEUE", "LEAVE_QUEUE", "MOVE", "MATCH_FOUND", "GAME_STATE", "GAME_OVER", "RETRY_REQUESTED", "RESTART_GAME", "OPPONENT_LEFT", "OPPONENT_DISCONNECTED", "OPPONENT_RECONNECTED", "ACTIVE_GAME_AVAILABLE", "REJOIN_GAME", "REJOIN_STATE", "CHAT", "ERROR"
 	Position int       `json:"position,omitempty"`
 	Symbol   string    `json:"symbol,omitempty"`
 	Turn     string    `json:"turn,omitempty"`
@@ -66,24 +67,46 @@ type Client struct {
 }
 
 type GameRoom struct {
-	ID       string
-	PlayerX  *Client
-	PlayerO  *Client
-	Board    [9]string
-	Turn     string
-	GameOver bool
-	RetryX   bool
-	RetryO   bool
-	Mu       sync.Mutex
+	ID        string
+	PlayerX   *Client
+	PlayerO   *Client
+	UsernameX string
+	UsernameO string
+	Board     [9]string
+	Turn      string
+	GameOver  bool
+	RetryX    bool
+	RetryO    bool
+	TimerX    *time.Timer
+	TimerO    *time.Timer
+	Mu        sync.Mutex
 }
 
 var (
-	matchQueue = make(chan *Client, 100)
-	leaveQueue = make(chan *Client, 100)
-	upgrader   = websocket.Upgrader{
+	matchQueue   = make(chan *Client, 100)
+	leaveQueue   = make(chan *Client, 100)
+	activeRooms  = make(map[string]*GameRoom)
+	activeRoomsMu sync.Mutex
+	upgrader     = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
 )
+
+func getActiveRoom(username string) *GameRoom {
+	activeRoomsMu.Lock()
+	defer activeRoomsMu.Unlock()
+	return activeRooms[username]
+}
+
+func setActiveRoom(username string, room *GameRoom) {
+	activeRoomsMu.Lock()
+	defer activeRoomsMu.Unlock()
+	if room == nil {
+		delete(activeRooms, username)
+	} else {
+		activeRooms[username] = room
+	}
+}
 
 func main() {
 	initDB()
@@ -293,6 +316,25 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		Send:     make(chan Message, 20),
 	}
 
+	// Check if player has an active ongoing game
+	room := getActiveRoom(username)
+	if room != nil {
+		room.Mu.Lock()
+		if !room.GameOver {
+			var oppName string
+			if username == room.UsernameX {
+				oppName = room.UsernameO
+			} else {
+				oppName = room.UsernameX
+			}
+			client.safeSend(Message{
+				Type:     "ACTIVE_GAME_AVAILABLE",
+				Opponent: oppName,
+			})
+		}
+		room.Mu.Unlock()
+	}
+
 	go client.writePump()
 	go client.readPump()
 }
@@ -378,10 +420,12 @@ func startMatch(p1, p2 *Client) {
 	p2.LastOpponent = p1.Username
 
 	room := &GameRoom{
-		ID:      fmt.Sprintf("%s_vs_%s", p1.Username, p2.Username),
-		PlayerX: p1,
-		PlayerO: p2,
-		Turn:    "X",
+		ID:        fmt.Sprintf("%s_vs_%s", p1.Username, p2.Username),
+		PlayerX:   p1,
+		PlayerO:   p2,
+		UsernameX: p1.Username,
+		UsernameO: p2.Username,
+		Turn:      "X",
 	}
 
 	p1.Room = room
@@ -390,6 +434,9 @@ func startMatch(p1, p2 *Client) {
 	p2.Room = room
 	p2.Symbol = "O"
 
+	setActiveRoom(p1.Username, room)
+	setActiveRoom(p2.Username, room)
+
 	p1.safeSend(Message{Type: "MATCH_FOUND", Symbol: "X", Turn: "X", Opponent: p2.Username})
 	p2.safeSend(Message{Type: "MATCH_FOUND", Symbol: "O", Turn: "X", Opponent: p1.Username})
 }
@@ -397,7 +444,7 @@ func startMatch(p1, p2 *Client) {
 func (c *Client) readPump() {
 	defer func() {
 		leaveQueue <- c
-		c.leaveCurrentRoom()
+		c.handleDisconnect()
 		c.Conn.Close()
 	}()
 
@@ -417,12 +464,15 @@ func (c *Client) readPump() {
 
 		switch msg.Type {
 		case "JOIN_QUEUE":
-			c.leaveCurrentRoom()
+			c.leaveCurrentRoomImmediately()
 			matchQueue <- c
 
 		case "LEAVE_QUEUE":
-			c.leaveCurrentRoom()
+			c.leaveCurrentRoomImmediately()
 			leaveQueue <- c
+
+		case "REJOIN_GAME":
+			c.handleRejoin()
 
 		case "MOVE":
 			if c.Room != nil {
@@ -469,7 +519,7 @@ func (c *Client) writePump() {
 	}
 }
 
-func (c *Client) leaveCurrentRoom() {
+func (c *Client) handleDisconnect() {
 	if c.Room == nil {
 		return
 	}
@@ -478,8 +528,142 @@ func (c *Client) leaveCurrentRoom() {
 	r.Mu.Lock()
 	defer r.Mu.Unlock()
 
-	var opponent *Client
+	if r.GameOver {
+		setActiveRoom(r.UsernameX, nil)
+		setActiveRoom(r.UsernameO, nil)
+		c.Room = nil
+		return
+	}
 
+	var opponent *Client
+	if c.Username == r.UsernameX {
+		r.PlayerX = nil
+		opponent = r.PlayerO
+		if r.TimerX != nil {
+			r.TimerX.Stop()
+		}
+		r.TimerX = time.AfterFunc(gracePeriod, func() {
+			r.expireRoom(r.UsernameX)
+		})
+	} else if c.Username == r.UsernameO {
+		r.PlayerO = nil
+		opponent = r.PlayerX
+		if r.TimerO != nil {
+			r.TimerO.Stop()
+		}
+		r.TimerO = time.AfterFunc(gracePeriod, func() {
+			r.expireRoom(r.UsernameO)
+		})
+	}
+
+	if opponent != nil {
+		opponent.safeSend(Message{
+			Type:    "OPPONENT_DISCONNECTED",
+			Message: fmt.Sprintf("%s disconnected. Waiting 60s for reconnection...", c.Username),
+		})
+	}
+
+	c.Room = nil
+}
+
+func (r *GameRoom) expireRoom(disconnectedUser string) {
+	r.Mu.Lock()
+	defer r.Mu.Unlock()
+
+	if r.GameOver {
+		return
+	}
+
+	r.GameOver = true
+	var remaining *Client
+	if disconnectedUser == r.UsernameX {
+		remaining = r.PlayerO
+	} else {
+		remaining = r.PlayerX
+	}
+
+	if remaining != nil {
+		remaining.safeSend(Message{
+			Type:    "OPPONENT_LEFT",
+			Message: fmt.Sprintf("%s failed to reconnect within 1 minute.", disconnectedUser),
+		})
+	}
+
+	setActiveRoom(r.UsernameX, nil)
+	setActiveRoom(r.UsernameO, nil)
+}
+
+func (c *Client) handleRejoin() {
+	room := getActiveRoom(c.Username)
+	if room == nil {
+		c.safeSend(Message{Type: "ERROR", Error: "No active game to rejoin."})
+		return
+	}
+
+	room.Mu.Lock()
+	defer room.Mu.Unlock()
+
+	if room.GameOver {
+		c.safeSend(Message{Type: "ERROR", Error: "The game has already ended."})
+		setActiveRoom(c.Username, nil)
+		return
+	}
+
+	var opp *Client
+	var mySym string
+	var oppName string
+
+	if c.Username == room.UsernameX {
+		room.PlayerX = c
+		if room.TimerX != nil {
+			room.TimerX.Stop()
+			room.TimerX = nil
+		}
+		opp = room.PlayerO
+		mySym = "X"
+		oppName = room.UsernameO
+	} else if c.Username == room.UsernameO {
+		room.PlayerO = c
+		if room.TimerO != nil {
+			room.TimerO.Stop()
+			room.TimerO = nil
+		}
+		opp = room.PlayerX
+		mySym = "O"
+		oppName = room.UsernameX
+	}
+
+	c.Room = room
+	c.Symbol = mySym
+
+	c.safeSend(Message{
+		Type:     "REJOIN_STATE",
+		Symbol:   mySym,
+		Turn:     room.Turn,
+		Board:    room.Board,
+		Opponent: oppName,
+	})
+
+	if opp != nil {
+		opp.safeSend(Message{
+			Type:    "OPPONENT_RECONNECTED",
+			Message: fmt.Sprintf("%s reconnected!", c.Username),
+		})
+	}
+}
+
+func (c *Client) leaveCurrentRoomImmediately() {
+	if c.Room == nil {
+		return
+	}
+
+	r := c.Room
+	r.Mu.Lock()
+	defer r.Mu.Unlock()
+
+	r.GameOver = true
+
+	var opponent *Client
 	switch c {
 	case r.PlayerX:
 		opponent = r.PlayerO
@@ -495,6 +679,8 @@ func (c *Client) leaveCurrentRoom() {
 		})
 	}
 
+	setActiveRoom(r.UsernameX, nil)
+	setActiveRoom(r.UsernameO, nil)
 	c.Room = nil
 }
 
@@ -527,10 +713,14 @@ func (r *GameRoom) handleMove(c *Client, pos int) {
 			Board:  r.Board,
 			Winner: winner,
 		}
-		r.PlayerX.safeSend(stateMsg)
-		r.PlayerO.safeSend(stateMsg)
+		if r.PlayerX != nil {
+			r.PlayerX.safeSend(stateMsg)
+		}
+		if r.PlayerO != nil {
+			r.PlayerO.safeSend(stateMsg)
+		}
 
-		go saveGameResult(r.PlayerX.Username, r.PlayerO.Username, winner)
+		go saveGameResult(r.UsernameX, r.UsernameO, winner)
 		return
 	}
 
@@ -545,8 +735,12 @@ func (r *GameRoom) handleMove(c *Client, pos int) {
 		Board: r.Board,
 		Turn:  r.Turn,
 	}
-	r.PlayerX.safeSend(broadcastMsg)
-	r.PlayerO.safeSend(broadcastMsg)
+	if r.PlayerX != nil {
+		r.PlayerX.safeSend(broadcastMsg)
+	}
+	if r.PlayerO != nil {
+		r.PlayerO.safeSend(broadcastMsg)
+	}
 }
 
 func (r *GameRoom) handleChat(c *Client, text string) {
@@ -559,8 +753,12 @@ func (r *GameRoom) handleChat(c *Client, text string) {
 		Sender:  c.Username,
 	}
 
-	r.PlayerX.safeSend(chatMsg)
-	r.PlayerO.safeSend(chatMsg)
+	if r.PlayerX != nil {
+		r.PlayerX.safeSend(chatMsg)
+	}
+	if r.PlayerO != nil {
+		r.PlayerO.safeSend(chatMsg)
+	}
 }
 
 func saveGameResult(userX, userO, winner string) {
@@ -592,10 +790,14 @@ func (r *GameRoom) handleRetry(c *Client) {
 	switch c {
 	case r.PlayerX:
 		r.RetryX = true
-		r.PlayerO.safeSend(Message{Type: "RETRY_REQUESTED", Message: "Opponent wants a rematch!"})
+		if r.PlayerO != nil {
+			r.PlayerO.safeSend(Message{Type: "RETRY_REQUESTED", Message: "Opponent wants a rematch!"})
+		}
 	case r.PlayerO:
 		r.RetryO = true
-		r.PlayerX.safeSend(Message{Type: "RETRY_REQUESTED", Message: "Opponent wants a rematch!"})
+		if r.PlayerX != nil {
+			r.PlayerX.safeSend(Message{Type: "RETRY_REQUESTED", Message: "Opponent wants a rematch!"})
+		}
 	}
 
 	if r.RetryX && r.RetryO {
@@ -605,6 +807,7 @@ func (r *GameRoom) handleRetry(c *Client) {
 		r.RetryO = false
 
 		r.PlayerX, r.PlayerO = r.PlayerO, r.PlayerX
+		r.UsernameX, r.UsernameO = r.UsernameO, r.UsernameX
 		r.PlayerX.Symbol = "X"
 		r.PlayerO.Symbol = "O"
 		r.Turn = "X"

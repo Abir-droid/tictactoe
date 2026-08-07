@@ -11,14 +11,29 @@ let popupTimer = null;
 const svgIconX = `<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
 const svgIconO = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>`;
 
+const winningCombos = [
+  [0, 1, 2], [3, 4, 5], [6, 7, 8],
+  [0, 3, 6], [1, 4, 7], [2, 5, 8],
+  [0, 4, 8], [2, 4, 6]
+];
+
+const comboLineCoords = [
+  { x1: "10%", y1: "16.6%", x2: "90%", y2: "16.6%" },
+  { x1: "10%", y1: "50%",   x2: "90%", y2: "50%" },
+  { x1: "10%", y1: "83.3%", x2: "90%", y2: "83.3%" },
+  { x1: "16.6%", y1: "10%", x2: "16.6%", y2: "90%" },
+  { x1: "50%",   y1: "10%", x2: "50%",   y2: "90%" },
+  { x1: "83.3%", y1: "10%", x2: "83.3%", y2: "90%" },
+  { x1: "10%",   y1: "10%", x2: "90%",   y2: "90%" },
+  { x1: "90%",   y1: "10%", x2: "10%",   y2: "90%" }
+];
+
 window.addEventListener("DOMContentLoaded", () => {
   initDraggableChat();
 
-  // Load saved theme preference
   const savedTheme = localStorage.getItem("cyber_game_theme") || "dark";
   applyTheme(savedTheme);
 
-  // Auto-login persistent session
   const savedUser = localStorage.getItem("cyber_game_user");
   if (savedUser) {
     myUsername = savedUser;
@@ -167,10 +182,21 @@ function connectWebSocket() {
     const msg = JSON.parse(event.data);
 
     switch (msg.type) {
+      case "ACTIVE_GAME_AVAILABLE":
+        document.getElementById("rejoin-opp-name").innerText = msg.opponent;
+        document.getElementById("rejoin-banner").classList.remove("hidden");
+        break;
+
       case "MATCH_FOUND":
         p1SessionScore = 0;
         p2SessionScore = 0;
+        document.getElementById("rejoin-banner").classList.add("hidden");
         setupMatch(msg);
+        break;
+
+      case "REJOIN_STATE":
+        document.getElementById("rejoin-banner").classList.add("hidden");
+        setupRejoinMatch(msg);
         break;
 
       case "GAME_STATE":
@@ -182,6 +208,7 @@ function connectWebSocket() {
 
       case "GAME_OVER":
         renderBoard(msg.board);
+        checkAndDrawWinLine(msg.board, msg.winner);
         if (msg.winner === "DRAW") {
           updateStatus("Game Over: It's a Draw!");
         } else if (msg.winner === mySymbol) {
@@ -192,7 +219,7 @@ function connectWebSocket() {
           p2SessionScore++;
           updateStatus("❌ Defeat!");
         }
-        currentTurn = ""; // Reset turn indicator
+        currentTurn = "";
         updateScoreboard();
         document.getElementById("retry-btn").classList.remove("hidden");
         document.getElementById("retry-btn").disabled = false;
@@ -204,6 +231,7 @@ function connectWebSocket() {
         break;
 
       case "RESTART_GAME":
+        clearWinningLine();
         document.getElementById("retry-btn").classList.add("hidden");
         document.getElementById("new-opp-btn").classList.add("hidden");
         document.getElementById("retry-msg").innerText = "";
@@ -218,8 +246,17 @@ function connectWebSocket() {
         appendChatMessage(msg.sender, msg.message);
         break;
 
+      case "OPPONENT_DISCONNECTED":
+        updateStatus(`⚠️ ${msg.message}`);
+        break;
+
+      case "OPPONENT_RECONNECTED":
+        updateStatus(`🟢 ${msg.message}`);
+        break;
+
       case "OPPONENT_LEFT":
         updateStatus(msg.message);
+        clearWinningLine();
         document.getElementById("board").classList.add("hidden");
         document.getElementById("scoreboard-card").classList.add("hidden");
         document.getElementById("chat-card").classList.add("hidden");
@@ -228,6 +265,7 @@ function connectWebSocket() {
         document.getElementById("new-opp-btn").classList.add("hidden");
         document.getElementById("search-spinner").classList.add("hidden");
         document.getElementById("retry-msg").innerText = "";
+        document.getElementById("rejoin-banner").classList.add("hidden");
         break;
 
       case "ERROR":
@@ -241,6 +279,12 @@ function connectWebSocket() {
       if (myUsername) connectWebSocket();
     }, 3000);
   };
+}
+
+function rejoinOngoingGame() {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: "REJOIN_GAME" }));
+  }
 }
 
 function startNewGame() {
@@ -274,6 +318,7 @@ function logout() {
 }
 
 function resetGameUI() {
+  clearWinningLine();
   document.getElementById("board").classList.add("hidden");
   document.getElementById("scoreboard-card").classList.add("hidden");
   document.getElementById("chat-card").classList.add("hidden");
@@ -301,9 +346,29 @@ function setupMatch(msg) {
   document.getElementById("retry-msg").innerText = "";
   document.getElementById("chat-messages").innerHTML = "";
 
+  clearWinningLine();
   updateScoreboard();
   renderBoard(["", "", "", "", "", "", "", "", ""]);
   updateStatus(`Matched vs ${msg.opponent}! Turn: Player [${currentTurn}]`);
+}
+
+function setupRejoinMatch(msg) {
+  mySymbol = msg.symbol;
+  currentTurn = msg.turn;
+  opponentUsername = msg.opponent;
+
+  showView("game-view");
+  document.getElementById("search-spinner").classList.add("hidden");
+  document.getElementById("retry-btn").classList.add("hidden");
+  document.getElementById("new-opp-btn").classList.add("hidden");
+  document.getElementById("board").classList.remove("hidden");
+  document.getElementById("scoreboard-card").classList.remove("hidden");
+  document.getElementById("chat-toggle-btn").classList.remove("hidden");
+
+  clearWinningLine();
+  updateScoreboard();
+  renderBoard(msg.board);
+  updateStatus(`Rejoined vs ${msg.opponent}! Turn: Player [${currentTurn}]`);
 }
 
 function updateScoreboard() {
@@ -318,7 +383,6 @@ function updateScoreboard() {
   document.getElementById("sb-p2-sym").className = `player-tag ${oppSymbol === 'X' ? 'tag-x' : 'tag-o'}`;
   document.getElementById("sb-p2-score").innerText = p2SessionScore;
 
-  // Turn Avatar Highlight
   const p1Avatar = document.getElementById("sb-p1-avatar");
   const p2Avatar = document.getElementById("sb-p2-avatar");
   p1Avatar.classList.remove("active-turn");
@@ -432,6 +496,31 @@ function renderBoard(board) {
       cell.className = "cell";
     }
   });
+}
+
+function checkAndDrawWinLine(board, winner) {
+  if (winner !== "X" && winner !== "O") return;
+
+  winningCombos.forEach((combo, idx) => {
+    if (board[combo[0]] === winner && board[combo[1]] === winner && board[combo[2]] === winner) {
+      const coords = comboLineCoords[idx];
+      const svg = document.getElementById("win-line-svg");
+      const line = document.getElementById("win-line");
+
+      line.setAttribute("x1", coords.x1);
+      line.setAttribute("y1", coords.y1);
+      line.setAttribute("x2", coords.x2);
+      line.setAttribute("y2", coords.y2);
+
+      line.className = `win-line ${winner === "O" ? "line-o" : ""}`;
+      svg.classList.remove("hidden");
+    }
+  });
+}
+
+function clearWinningLine() {
+  const svg = document.getElementById("win-line-svg");
+  if (svg) svg.classList.add("hidden");
 }
 
 function updateStatus(txt) {
