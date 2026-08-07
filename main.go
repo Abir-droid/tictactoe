@@ -33,10 +33,18 @@ type LeaderboardEntry struct {
 	Wins     int    `json:"wins"`
 	Losses   int    `json:"losses"`
 	Draws    int    `json:"draws"`
+	Total    int    `json:"total"`
+}
+
+type UserStats struct {
+	Wins   int `json:"wins"`
+	Losses int `json:"losses"`
+	Draws  int `json:"draws"`
+	Total  int `json:"total"`
 }
 
 type Message struct {
-	Type     string    `json:"type"` // "JOIN_QUEUE", "MOVE", "MATCH_FOUND", "GAME_STATE", "GAME_OVER", "RETRY_REQUESTED", "RESTART_GAME", "OPPONENT_LEFT", "CHAT", "ERROR"
+	Type     string    `json:"type"` // "JOIN_QUEUE", "LEAVE_QUEUE", "MOVE", "MATCH_FOUND", "GAME_STATE", "GAME_OVER", "RETRY_REQUESTED", "RESTART_GAME", "OPPONENT_LEFT", "CHAT", "ERROR"
 	Position int       `json:"position,omitempty"`
 	Symbol   string    `json:"symbol,omitempty"`
 	Turn     string    `json:"turn,omitempty"`
@@ -85,6 +93,7 @@ func main() {
 	http.HandleFunc("/api/register", handleRegister)
 	http.HandleFunc("/api/login", handleLogin)
 	http.HandleFunc("/api/leaderboard", handleLeaderboard)
+	http.HandleFunc("/api/profile", handleProfile)
 	http.HandleFunc("/ws", handleWebSocket)
 	http.Handle("/", http.FileServer(http.Dir("./public")))
 
@@ -109,7 +118,6 @@ func initDB() {
 		log.Fatal("Failed to connect to PostgreSQL:", err)
 	}
 
-	// Optimize connection pooling for Render free tier
 	db.SetMaxOpenConns(20)
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
@@ -136,7 +144,6 @@ func initDB() {
 	}
 }
 
-// Health check endpoint for UptimeRobot to keep server & DB alive
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	if db != nil {
 		var dummy int
@@ -213,7 +220,7 @@ func handleLeaderboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.Query("SELECT username, wins, losses, draws FROM users ORDER BY wins DESC, draws DESC, losses ASC LIMIT 10")
+	rows, err := db.Query("SELECT username, wins, losses, draws, (wins + losses + draws) AS total FROM users ORDER BY wins DESC, draws DESC, losses ASC LIMIT 10")
 	if err != nil {
 		http.Error(w, "Failed to fetch leaderboard", http.StatusInternalServerError)
 		return
@@ -223,13 +230,41 @@ func handleLeaderboard(w http.ResponseWriter, r *http.Request) {
 	leaderboard := make([]LeaderboardEntry, 0)
 	for rows.Next() {
 		var entry LeaderboardEntry
-		if err := rows.Scan(&entry.Username, &entry.Wins, &entry.Losses, &entry.Draws); err == nil {
+		if err := rows.Scan(&entry.Username, &entry.Wins, &entry.Losses, &entry.Draws, &entry.Total); err == nil {
 			leaderboard = append(leaderboard, entry)
 		}
 	}
 
+	if err := rows.Err(); err != nil {
+		http.Error(w, "Error iterating leaderboard rows", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(leaderboard)
+}
+
+func handleProfile(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	username := r.URL.Query().Get("username")
+	if username == "" {
+		http.Error(w, "Username required", http.StatusBadRequest)
+		return
+	}
+
+	var stats UserStats
+	err := db.QueryRow("SELECT wins, losses, draws, (wins + losses + draws) AS total FROM users WHERE username = $1", username).Scan(&stats.Wins, &stats.Losses, &stats.Draws, &stats.Total)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(stats)
 }
 
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -384,6 +419,10 @@ func (c *Client) readPump() {
 		case "JOIN_QUEUE":
 			c.leaveCurrentRoom()
 			matchQueue <- c
+
+		case "LEAVE_QUEUE":
+			c.leaveCurrentRoom()
+			leaveQueue <- c
 
 		case "MOVE":
 			if c.Room != nil {

@@ -8,7 +8,7 @@
     /* Dark Theme Palette (Default) */
     [data-theme="dark"] {
       --bg-color: #090d16;
-      --bg-gradient: radial-gradient(circle at 50% 20%, #1e1b4b 0%, #090d16 80%);
+      --bg-gradient: radial-gradient(circle at 50% 15%, #1e1b4b 0%, #090d16 80%);
       --card-bg: rgba(22, 31, 49, 0.85);
       --card-border: rgba(255, 255, 255, 0.1);
       --input-bg: rgba(15, 23, 42, 0.6);
@@ -25,7 +25,7 @@
       --accent-pink: #ec4899;
       --accent-green: #10b981;
       --accent-amber: #f59e0b;
-      --shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+      --shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
       --sun-color: #f59e0b;
       --moon-color: #f59e0b;
       --chat-my-msg: #0284c7;
@@ -35,7 +35,7 @@
     /* Light Theme Palette */
     [data-theme="light"] {
       --bg-color: #f1f5f9;
-      --bg-gradient: radial-gradient(circle at 50% 20%, #e2e8f0 0%, #cbd5e1 80%);
+      --bg-gradient: radial-gradient(circle at 50% 15%, #e2e8f0 0%, #cbd5e1 80%);
       --card-bg: rgba(255, 255, 255, 0.9);
       --card-border: rgba(0, 0, 0, 0.08);
       --input-bg: rgba(241, 245, 249, 0.9);
@@ -52,7 +52,7 @@
       --accent-pink: #db2777;
       --accent-green: #059669;
       --accent-amber: #d97706;
-      --shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+      --shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
       --sun-color: #d97706;
       --moon-color: #d97706;
       --chat-my-msg: #0284c7;
@@ -74,7 +74,7 @@
       background: var(--bg-gradient);
       color: var(--text-main);
       margin: 0;
-      padding: 10px 1rem 1.5rem 1rem;
+      padding: 10px 1.5rem 2rem 1.5rem;
       overflow-x: hidden;
       position: relative;
     }
@@ -93,37 +93,38 @@
       z-index: 9999;
     }
 
+    /* Spacious Hero Title */
     .hero-title {
-      font-size: 1.6rem;
+      font-size: 2rem;
       font-weight: 900;
-      letter-spacing: 1.5px;
+      letter-spacing: 2px;
       text-transform: uppercase;
       background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-blue) 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      margin-top: 50px;
-      margin-bottom: 8px;
-      text-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+      margin-top: 5px;
+      margin-bottom: 12px;
+      text-shadow: 0 0 25px rgba(56, 189, 248, 0.2);
     }
 
     .top-left-nav {
       position: fixed;
-      top: 12px;
-      left: 12px;
+      top: 15px;
+      left: 15px;
       z-index: 1000;
     }
 
     .theme-toggle-btn {
       position: fixed;
-      top: 12px;
-      right: 12px;
+      top: 15px;
+      right: 15px;
       background: var(--card-bg);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border: 1px solid var(--card-border);
       color: var(--text-main);
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
       cursor: pointer;
       box-shadow: var(--shadow);
@@ -139,16 +140,17 @@
       transform: scale(1.1);
     }
 
+    /* Restored Spacious Card Sizes */
     .card {
       background: var(--card-bg);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border: 1px solid var(--card-border);
-      padding: 1.4rem 1.6rem;
-      border-radius: 18px;
+      padding: 2rem;
+      border-radius: 20px;
       box-shadow: var(--shadow);
       text-align: center;
-      width: 360px;
+      width: 380px;
       max-width: 95vw;
       animation: fadeInSlide 0.3s ease-out forwards;
     }
@@ -160,8 +162,8 @@
 
     h2 {
       margin-top: 0;
-      margin-bottom: 8px;
-      font-size: 1.35rem;
+      margin-bottom: 12px;
+      font-size: 1.6rem;
       font-weight: 700;
       letter-spacing: -0.5px;
       background: var(--heading-gradient);
@@ -171,38 +173,38 @@
 
     input {
       width: 100%;
-      padding: 10px 14px;
-      margin-top: 8px;
+      padding: 12px 16px;
+      margin-top: 10px;
       border-radius: 10px;
       border: 1px solid var(--card-border);
       background: var(--input-bg);
       color: var(--text-main);
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       outline: none;
     }
 
     input:focus {
       border-color: var(--accent-blue);
-      box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
     }
 
     button {
       width: 100%;
-      padding: 10px;
-      margin-top: 10px;
+      padding: 12px;
+      margin-top: 12px;
       border-radius: 10px;
       border: none;
-      font-size: 0.95rem;
+      font-size: 1rem;
       font-weight: 600;
       cursor: pointer;
       background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
       color: white;
-      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
     }
 
     button:hover:not(:disabled) {
       transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
     }
 
     button:active:not(:disabled) {
@@ -215,8 +217,8 @@
       box-shadow: none;
       border: 1px solid var(--card-border);
       width: auto;
-      padding: 6px 14px;
-      font-size: 0.85rem;
+      padding: 8px 16px;
+      font-size: 0.9rem;
     }
 
     button.btn-sec:hover:not(:disabled) {
@@ -235,10 +237,10 @@
 
     .link-btn {
       display: inline-block;
-      margin-top: 10px;
+      margin-top: 14px;
       color: var(--accent-blue);
       text-decoration: none;
-      font-size: 0.85rem;
+      font-size: 0.88rem;
       cursor: pointer;
       font-weight: 500;
     }
@@ -251,15 +253,15 @@
     .profile-stats-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
-      margin: 10px 0 14px 0;
+      gap: 8px;
+      margin: 12px 0 16px 0;
     }
 
     .stat-badge {
       background: var(--input-bg);
       border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 6px 2px;
+      border-radius: 10px;
+      padding: 8px 4px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -267,11 +269,11 @@
 
     .stat-val {
       font-weight: 800;
-      font-size: 1rem;
+      font-size: 1.1rem;
     }
 
     .stat-label {
-      font-size: 0.65rem;
+      font-size: 0.7rem;
       color: var(--text-muted);
       text-transform: uppercase;
       font-weight: 600;
@@ -280,9 +282,9 @@
 
     /* Scoreboard Box */
     .scoreboard-card {
-      width: 360px;
-      margin-bottom: 10px;
-      padding: 0.8rem 1.2rem;
+      width: 380px;
+      margin-bottom: 12px;
+      padding: 1rem 1.4rem;
     }
 
     .scoreboard {
@@ -294,12 +296,12 @@
     .player-card {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
 
     .player-avatar {
-      width: 34px;
-      height: 34px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       background: var(--btn-sec-bg);
       border: 1px solid var(--card-border);
@@ -319,17 +321,17 @@
     }
 
     .player-name {
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       font-weight: 700;
       color: var(--text-main);
-      max-width: 75px;
+      max-width: 80px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
     .player-tag {
-      font-size: 0.72rem;
+      font-size: 0.75rem;
       font-weight: 600;
     }
 
@@ -337,10 +339,10 @@
     .tag-o { color: var(--accent-pink); }
 
     .score-badge {
-      font-size: 1.1rem;
+      font-size: 1.2rem;
       font-weight: 800;
       color: var(--text-main);
-      padding: 0 4px;
+      padding: 0 6px;
     }
 
     .vs-divider {
@@ -353,13 +355,13 @@
     /* Freely Draggable Floating Chat Window */
     .chat-card {
       position: fixed;
-      top: 100px;
+      top: 120px;
       left: 20px;
-      width: 310px;
-      padding: 1rem;
+      width: 330px;
+      padding: 1.1rem;
       text-align: left;
       z-index: 2500;
-      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
       touch-action: none;
     }
 
@@ -367,16 +369,16 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
       cursor: move;
-      padding: 2px 4px;
+      padding: 4px 6px;
       background: var(--btn-sec-bg);
       border-radius: 8px;
       user-select: none;
     }
 
     .chat-header-title {
-      font-size: 0.85rem;
+      font-size: 0.88rem;
       font-weight: 700;
       color: var(--accent-blue);
       display: flex;
@@ -389,7 +391,7 @@
       border: none;
       color: var(--text-muted);
       cursor: pointer;
-      font-size: 1rem;
+      font-size: 1.1rem;
       padding: 0 4px;
       width: auto;
       margin: 0;
@@ -402,11 +404,11 @@
     }
 
     .chat-messages {
-      height: 150px;
+      height: 160px;
       overflow-y: auto;
       border: 1px solid var(--card-border);
       border-radius: 10px;
-      padding: 6px;
+      padding: 8px;
       background: var(--input-bg);
       display: flex;
       flex-direction: column;
@@ -415,9 +417,9 @@
 
     .chat-msg {
       max-width: 85%;
-      padding: 5px 9px;
-      border-radius: 10px;
-      font-size: 0.82rem;
+      padding: 6px 10px;
+      border-radius: 12px;
+      font-size: 0.85rem;
       word-break: break-word;
     }
 
@@ -437,18 +439,18 @@
 
     .emoji-bar {
       display: flex;
-      gap: 4px;
-      margin-top: 6px;
+      gap: 6px;
+      margin-top: 8px;
       overflow-x: auto;
-      padding-bottom: 2px;
+      padding-bottom: 4px;
     }
 
     .emoji-pill {
       background: var(--btn-sec-bg);
       border: 1px solid var(--card-border);
-      border-radius: 6px;
-      padding: 3px 6px;
-      font-size: 0.8rem;
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 0.85rem;
       cursor: pointer;
       user-select: none;
     }
@@ -460,33 +462,33 @@
 
     .chat-input-row {
       display: flex;
-      gap: 6px;
+      gap: 8px;
       margin-top: 6px;
     }
 
     .chat-input-row input {
       margin-top: 0;
-      padding: 6px 10px;
-      font-size: 0.82rem;
+      padding: 8px 12px;
+      font-size: 0.85rem;
     }
 
     .chat-input-row button {
       margin-top: 0;
-      width: 60px;
-      padding: 6px;
-      font-size: 0.82rem;
+      width: 65px;
+      padding: 8px;
+      font-size: 0.85rem;
     }
 
     .chat-drawer-toggle {
       position: fixed;
-      bottom: 20px;
-      left: 20px;
+      bottom: 25px;
+      left: 25px;
       background: var(--card-bg);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border: 1px solid var(--card-border);
-      width: 46px;
-      height: 46px;
+      width: 50px;
+      height: 50px;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -502,17 +504,17 @@
 
     .chat-popup {
       position: fixed;
-      bottom: 75px;
-      left: 20px;
+      bottom: 85px;
+      left: 25px;
       background: var(--card-bg);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border: 1px solid var(--accent-blue);
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-      padding: 8px 12px;
-      border-radius: 12px;
-      max-width: 240px;
-      font-size: 0.82rem;
+      padding: 10px 14px;
+      border-radius: 14px;
+      max-width: 260px;
+      font-size: 0.85rem;
       color: var(--text-main);
       z-index: 1001;
       animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -522,18 +524,18 @@
       font-weight: 700;
       color: var(--accent-cyan);
       margin-bottom: 2px;
-      font-size: 0.75rem;
+      font-size: 0.78rem;
     }
 
     /* Searching Spinner */
     .search-loader {
-      width: 38px;
-      height: 38px;
+      width: 44px;
+      height: 44px;
       border: 3px solid rgba(56, 189, 248, 0.2);
       border-radius: 50%;
       border-top-color: var(--accent-blue);
       animation: spin 1s infinite linear;
-      margin: 10px auto;
+      margin: 15px auto;
     }
 
     @keyframes spin {
@@ -541,24 +543,24 @@
       100% { transform: rotate(360deg); }
     }
 
-    /* Board & Cells */
+    /* Board & Restored 90px Cells */
     .board {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-top: 10px;
+      gap: 12px;
+      margin-top: 15px;
     }
 
     .cell {
-      width: 82px;
-      height: 82px;
+      width: 90px;
+      height: 90px;
       background: var(--cell-bg);
       border: 1px solid var(--card-border);
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      border-radius: 12px;
+      border-radius: 14px;
       user-select: none;
     }
 
@@ -568,8 +570,8 @@
     }
 
     .cell svg {
-      width: 38px;
-      height: 38px;
+      width: 42px;
+      height: 42px;
       stroke-width: 2.2;
       stroke-linecap: round;
       stroke-linejoin: round;
@@ -593,18 +595,18 @@
       100% { transform: scale(1); opacity: 1; }
     }
 
-    /* Leaderboard */
+    /* Leaderboard Table */
     .leaderboard-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 6px;
-      font-size: 0.78rem;
-      border-radius: 8px;
+      margin-top: 8px;
+      font-size: 0.85rem;
+      border-radius: 10px;
       overflow: hidden;
     }
 
     .leaderboard-table th, .leaderboard-table td {
-      padding: 6px 3px;
+      padding: 8px 4px;
       border-bottom: 1px solid var(--card-border);
       text-align: center;
     }
@@ -616,8 +618,8 @@
     }
 
     .hidden { display: none !important; }
-    #status { margin-top: 8px; font-weight: 600; font-size: 0.9rem; color: var(--accent-blue); }
-    #retry-msg { margin-top: 6px; font-size: 0.85rem; color: var(--accent-amber); }
+    #status { margin-top: 10px; font-weight: 600; font-size: 0.95rem; color: var(--accent-blue); }
+    #retry-msg { margin-top: 8px; font-size: 0.9rem; color: var(--accent-amber); }
   </style>
 </head>
 <body>
@@ -632,8 +634,8 @@
 
   <!-- Minimal Icon Theme Switcher -->
   <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn" aria-label="Toggle Theme">
-    <svg id="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--sun-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-    <svg id="icon-moon" class="hidden" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--moon-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+    <svg id="icon-sun" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--sun-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+    <svg id="icon-moon" class="hidden" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--moon-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
   </button>
 
   <!-- LOGIN -->
@@ -660,7 +662,7 @@
 
   <!-- DASHBOARD -->
   <div class="card hidden" id="dashboard-view">
-    <div id="user-display" style="color: var(--accent-cyan); font-weight: 700; font-size: 1.15rem; margin-bottom: 6px;"></div>
+    <div id="user-display" style="color: var(--accent-cyan); font-weight: 700; font-size: 1.25rem; margin-bottom: 8px;"></div>
 
     <div class="profile-stats-grid">
       <div class="stat-badge">
@@ -682,9 +684,9 @@
     </div>
 
     <button onclick="startNewGame()">New Game</button>
-    <button class="btn-sec" style="width: 100%; margin-top: 8px;" onclick="logout()">Logout</button>
+    <button class="btn-sec" style="width: 100%; margin-top: 10px;" onclick="logout()">Logout</button>
 
-    <h3 style="margin-top: 16px; margin-bottom: 4px; font-size: 0.88rem; color: var(--text-muted);">🏆 Top 10 Leaderboard</h3>
+    <h3 style="margin-top: 20px; margin-bottom: 6px; font-size: 0.95rem; color: var(--text-muted);">🏆 Top 10 Leaderboard</h3>
     <table class="leaderboard-table">
       <thead>
         <tr>
@@ -706,7 +708,7 @@
     <div class="scoreboard">
       <div class="player-card">
         <div class="player-avatar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
         </div>
         <div class="player-details">
           <span id="sb-p1-name" class="player-name">You</span>
@@ -726,7 +728,7 @@
           <span id="sb-p2-sym" class="player-tag tag-o">Symbol O</span>
         </div>
         <div class="player-avatar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 1-3-3.87"></path><path d="M4 21v-2a4 4 0 0 1 3-3.87"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 1-3-3.87"></path><path d="M4 21v-2a4 4 0 0 1 3-3.87"></path><circle cx="12" cy="7" r="4"></circle></svg>
         </div>
       </div>
     </div>
@@ -786,7 +788,7 @@
 
   <!-- FLOATING CHAT ICON TOGGLE -->
   <button id="chat-toggle-btn" class="chat-drawer-toggle hidden" onclick="toggleChatDrawer()">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
   </button>
 
   <script>
@@ -803,7 +805,7 @@
     const svgIconX = `<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
     const svgIconO = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>`;
 
-    // --- PERSISTENT LOGIN ON REFRESH ---
+    // Persistent login on page refresh
     window.addEventListener("DOMContentLoaded", () => {
       initDraggableChat();
       const savedUser = localStorage.getItem("cyber_game_user");
@@ -931,7 +933,7 @@
             <td style="color: var(--accent-green);">${player.wins}</td>
             <td style="color: #ef4444;">${player.losses}</td>
             <td style="color: var(--accent-amber);">${player.draws}</td>
-            <td style="color: var(--accent-blue); font-weight: 700;">${player.total}</td>
+            <td style="color: var(--accent-blue); font-weight: 700;">${player.total !== undefined ? player.total : (player.wins + player.losses + player.draws)}</td>
           </tr>
         `).join('');
       } catch (e) {
@@ -1030,6 +1032,10 @@
     }
 
     function returnToDashboard() {
+      // Leave matchmaking queue so player is not matched while on dashboard
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "LEAVE_QUEUE" }));
+      }
       showView("dashboard-view");
       loadLeaderboard();
       loadProfileStats();
@@ -1199,7 +1205,6 @@
       document.getElementById("status").innerText = txt;
     }
 
-    // --- TOUCH & MOUSE DRAGGABLE CHAT WINDOW ENGINE ---
     function initDraggableChat() {
       const el = document.getElementById("chat-card");
       const handle = document.getElementById("chat-header");
