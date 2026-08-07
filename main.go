@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	writeWait  = 10 * time.Second
-	pongWait   = 60 * time.Second
-	pingPeriod = (pongWait * 9) / 10
+	writeWait   = 10 * time.Second
+	pongWait    = 60 * time.Second
+	pingPeriod  = (pongWait * 9) / 10
 	gracePeriod = 60 * time.Second
 )
 
@@ -83,11 +83,11 @@ type GameRoom struct {
 }
 
 var (
-	matchQueue   = make(chan *Client, 100)
-	leaveQueue   = make(chan *Client, 100)
-	activeRooms  = make(map[string]*GameRoom)
+	matchQueue    = make(chan *Client, 100)
+	leaveQueue    = make(chan *Client, 100)
+	activeRooms   = make(map[string]*GameRoom)
 	activeRoomsMu sync.Mutex
-	upgrader     = websocket.Upgrader{
+	upgrader      = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
 )
@@ -316,7 +316,6 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		Send:     make(chan Message, 20),
 	}
 
-	// Check if player has an active ongoing game
 	room := getActiveRoom(username)
 	if room != nil {
 		room.Mu.Lock()
@@ -648,6 +647,11 @@ func (c *Client) handleRejoin() {
 		opp.safeSend(Message{
 			Type:    "OPPONENT_RECONNECTED",
 			Message: fmt.Sprintf("%s reconnected!", c.Username),
+		})
+		opp.safeSend(Message{
+			Type:  "GAME_STATE",
+			Board: room.Board,
+			Turn:  room.Turn,
 		})
 	}
 }

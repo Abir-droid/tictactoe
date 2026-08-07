@@ -185,6 +185,10 @@ function connectWebSocket() {
       case "ACTIVE_GAME_AVAILABLE":
         document.getElementById("rejoin-opp-name").innerText = msg.opponent;
         document.getElementById("rejoin-banner").classList.remove("hidden");
+        const gameView = document.getElementById("game-view");
+        if (gameView && !gameView.classList.contains("hidden")) {
+          rejoinOngoingGame();
+        }
         break;
 
       case "MATCH_FOUND":
@@ -485,13 +489,17 @@ function renderBoard(board) {
     const hasX = cell.classList.contains("pop-x");
     const hasO = cell.classList.contains("pop-o");
 
-    if (val === "X" && !hasX) {
-      cell.innerHTML = svgIconX;
-      cell.className = "cell pop-x";
-    } else if (val === "O" && !hasO) {
-      cell.innerHTML = svgIconO;
-      cell.className = "cell pop-o";
-    } else if (val === "") {
+    if (val === "X") {
+      if (!hasX) {
+        cell.innerHTML = svgIconX;
+        cell.className = "cell pop-x";
+      }
+    } else if (val === "O") {
+      if (!hasO) {
+        cell.innerHTML = svgIconO;
+        cell.className = "cell pop-o";
+      }
+    } else {
       cell.innerHTML = "";
       cell.className = "cell";
     }
