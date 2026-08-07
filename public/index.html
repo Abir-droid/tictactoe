@@ -79,6 +79,11 @@
       position: relative;
     }
 
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 4px; }
+
     #confetti-canvas {
       position: fixed;
       top: 0;
@@ -89,19 +94,20 @@
       z-index: 9999;
     }
 
-    /* Game Header Title */
-    .game-branding {
-      font-size: 1.8rem;
+    /* Standalone Title Branding Outside Cards */
+    .hero-title {
+      font-size: 2.2rem;
       font-weight: 900;
-      letter-spacing: 1px;
+      letter-spacing: 2px;
       text-transform: uppercase;
       background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-blue) 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      margin-bottom: 12px;
-      text-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+      margin-bottom: 20px;
+      text-shadow: 0 0 25px rgba(56, 189, 248, 0.2);
     }
 
+    /* Top Left Nav */
     .top-left-nav {
       position: fixed;
       top: 20px;
@@ -343,69 +349,25 @@
       opacity: 0.6;
     }
 
-    /* Game Layout Container (Side-by-side when chat is open) */
-    .game-container {
+    /* Game Layout Wrapper (Fixed Centered Game Box) */
+    .game-wrapper {
+      position: relative;
       display: flex;
-      gap: 18px;
+      justify-content: center;
       align-items: flex-start;
-      justify-content: center;
-      flex-wrap: wrap;
+      width: 100%;
+      max-width: 1000px;
     }
 
-    /* Floating Chat Drawer & Toggle */
-    .chat-drawer-toggle {
-      position: fixed;
-      bottom: 25px;
-      left: 25px;
-      background: var(--card-bg);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid var(--card-border);
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      box-shadow: var(--shadow);
-      z-index: 1000;
-    }
-
-    .chat-drawer-toggle:hover {
-      transform: scale(1.1);
-    }
-
-    /* Floating Chat Popup Preview */
-    .chat-popup {
-      position: fixed;
-      bottom: 85px;
-      left: 25px;
-      background: var(--card-bg);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid var(--accent-blue);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-      padding: 10px 14px;
-      border-radius: 14px;
-      max-width: 260px;
-      font-size: 0.85rem;
-      color: var(--text-main);
-      z-index: 1001;
-      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-
-    .chat-popup-sender {
-      font-weight: 700;
-      color: var(--accent-cyan);
-      margin-bottom: 2px;
-      font-size: 0.78rem;
-    }
-
+    /* Desktop Absolute Positioned Left Chat Drawer */
     .chat-card {
+      position: absolute;
+      right: calc(50% + 210px);
+      top: 0;
       width: 320px;
       padding: 1.2rem;
       text-align: left;
+      z-index: 50;
     }
 
     .chat-header-bar {
@@ -514,6 +476,54 @@
       font-size: 0.85rem;
     }
 
+    .chat-drawer-toggle {
+      position: fixed;
+      bottom: 25px;
+      left: 25px;
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      z-index: 1000;
+    }
+
+    .chat-drawer-toggle:hover {
+      transform: scale(1.1);
+    }
+
+    .chat-popup {
+      position: fixed;
+      bottom: 85px;
+      left: 25px;
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--accent-blue);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      padding: 10px 14px;
+      border-radius: 14px;
+      max-width: 260px;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      z-index: 1001;
+      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .chat-popup-sender {
+      font-weight: 700;
+      color: var(--accent-cyan);
+      margin-bottom: 2px;
+      font-size: 0.78rem;
+    }
+
     /* Searching Spinner */
     .search-loader {
       width: 44px;
@@ -607,11 +617,54 @@
     .hidden { display: none !important; }
     #status { margin-top: 10px; font-weight: 600; color: var(--accent-blue); }
     #retry-msg { margin-top: 8px; font-size: 0.9rem; color: var(--accent-amber); }
+
+    /* Mobile Screen Responsive Layout */
+    @media (max-width: 900px) {
+      body {
+        padding-top: 70px;
+      }
+
+      .top-left-nav {
+        top: 15px;
+        left: 15px;
+      }
+
+      .theme-toggle-btn {
+        top: 15px;
+        right: 15px;
+      }
+
+      .hero-title {
+        font-size: 1.6rem;
+        margin-bottom: 10px;
+      }
+
+      .scoreboard-card, .card {
+        width: 100%;
+        max-width: 350px;
+      }
+
+      /* Stack Chat Box Over Board on Mobile */
+      .chat-card {
+        position: fixed;
+        right: auto;
+        top: auto;
+        bottom: 85px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
+        max-width: 350px;
+        z-index: 2000;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+      }
+    }
   </style>
 </head>
 <body>
 
   <canvas id="confetti-canvas"></canvas>
+
+  <div id="hero-branding" class="hero-title">CYBER TAC TOE</div>
 
   <div id="top-left-nav" class="top-left-nav hidden">
     <button class="btn-sec" onclick="returnToDashboard()">← Back to Dashboard</button>
@@ -625,7 +678,6 @@
 
   <!-- LOGIN -->
   <div class="card" id="login-view">
-    <div class="game-branding">CYBER TAC TOE</div>
     <h2>Login</h2>
     <input type="text" id="login-username" placeholder="Username" />
     <input type="password" id="login-password" placeholder="Password" />
@@ -637,7 +689,6 @@
 
   <!-- REGISTER -->
   <div class="card hidden" id="register-view">
-    <div class="game-branding">CYBER TAC TOE</div>
     <h2>Create Account</h2>
     <input type="text" id="reg-username" placeholder="Username" />
     <input type="password" id="reg-password" placeholder="Password" />
@@ -649,7 +700,6 @@
 
   <!-- DASHBOARD -->
   <div class="card hidden" id="dashboard-view">
-    <div class="game-branding">CYBER TAC TOE</div>
     <div id="user-display" style="color: var(--accent-cyan); font-weight: 700; font-size: 1.25rem; margin-bottom: 8px;"></div>
 
     <!-- User Profile Stats Panel -->
@@ -723,10 +773,10 @@
     </div>
   </div>
 
-  <!-- GAME LAYOUT CONTAINER -->
-  <div class="game-container">
+  <!-- GAME LAYOUT WRAPPER -->
+  <div class="game-wrapper">
     
-    <!-- MINIMIZED CHATBOX DRAWER -->
+    <!-- LEFT POSITIONED CHAT CARD -->
     <div id="chat-card" class="card chat-card hidden">
       <div class="chat-header-bar">
         <span class="chat-header-title">💬 Match Chat</span>
@@ -734,7 +784,6 @@
       </div>
       <div id="chat-messages" class="chat-messages"></div>
       
-      <!-- Quick Emojis Bar -->
       <div class="emoji-bar">
         <span class="emoji-pill" onclick="quickSendEmoji('👍')">👍</span>
         <span class="emoji-pill" onclick="quickSendEmoji('😎')">😎</span>
@@ -751,9 +800,8 @@
       </div>
     </div>
 
-    <!-- MAIN GAME CARD -->
+    <!-- MAIN CENTERED GAME CARD -->
     <div class="card hidden" id="game-view">
-      <div class="game-branding" style="font-size: 1.3rem;">CYBER TAC TOE</div>
       <div id="search-spinner" class="search-loader hidden"></div>
       <div id="status">Searching for another player...</div>
       <div id="retry-msg"></div>
@@ -783,7 +831,7 @@
   </div>
 
   <!-- FLOATING CHAT ICON TOGGLE -->
-  <button id="chat-toggle-btn" class="chat-drawer-toggle hidden" onclick="toggleChatDrawer(true)">
+  <button id="chat-toggle-btn" class="chat-drawer-toggle hidden" onclick="toggleChatDrawer()">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
   </button>
 
@@ -1082,13 +1130,19 @@
       document.getElementById("sb-p2-score").innerText = p2SessionScore;
     }
 
-    function toggleChatDrawer(open) {
-      isChatOpen = open;
-      if (open) {
-        document.getElementById("chat-card").classList.remove("hidden");
+    function toggleChatDrawer(forcedState) {
+      if (typeof forcedState === 'boolean') {
+        isChatOpen = forcedState;
+      } else {
+        isChatOpen = !isChatOpen;
+      }
+
+      const chatCard = document.getElementById("chat-card");
+      if (isChatOpen) {
+        chatCard.classList.remove("hidden");
         document.getElementById("chat-popup").classList.add("hidden");
       } else {
-        document.getElementById("chat-card").classList.add("hidden");
+        chatCard.classList.add("hidden");
       }
     }
 
@@ -1117,7 +1171,6 @@
       container.appendChild(msgDiv);
       container.scrollTop = container.scrollHeight;
 
-      // Show floating popup preview if chatbox is minimized and message is from opponent
       if (!isMe && !isChatOpen) {
         showChatPopup(sender, text);
       }
