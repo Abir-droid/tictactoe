@@ -225,7 +225,6 @@
       text-decoration: underline;
     }
 
-    /* Scoreboard Box */
     .scoreboard-card {
       width: 380px;
       margin-bottom: 16px;
@@ -297,7 +296,6 @@
       opacity: 0.6;
     }
 
-    /* Chatbox Component */
     .chat-card {
       width: 380px;
       margin-top: 16px;
@@ -365,7 +363,6 @@
       font-size: 0.85rem;
     }
 
-    /* Searching Spinner */
     .search-loader {
       width: 44px;
       height: 44px;
@@ -381,7 +378,6 @@
       100% { transform: rotate(360deg); }
     }
 
-    /* Board & Cells */
     .board {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -433,7 +429,6 @@
       100% { transform: scale(1); opacity: 1; }
     }
 
-    /* Leaderboard */
     .leaderboard-table {
       width: 100%;
       border-collapse: collapse;
@@ -777,6 +772,13 @@
             break;
         }
       };
+
+      ws.onclose = () => {
+        console.log("WebSocket disconnected. Retrying in 3 seconds...");
+        setTimeout(() => {
+          if (myUsername) connectWebSocket();
+        }, 3000);
+      };
     }
 
     function startNewGame() {
@@ -792,6 +794,7 @@
 
     function logout() {
       if (ws) {
+        ws.onclose = null;
         ws.close();
       }
       myUsername = "";

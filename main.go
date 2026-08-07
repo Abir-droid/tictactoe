@@ -8,10 +8,17 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	_ "github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
+)
+
+const (
+	writeWait  = 10 * time.Second
+	pongWait   = 60 * time.Second
+	pingPeriod = (pongWait * 9) / 10
 )
 
 var db *sql.DB
@@ -29,11 +36,11 @@ type LeaderboardEntry struct {
 }
 
 type Message struct {
-	Type     string    `json:"type"`               // "JOIN_QUEUE", "MOVE", "MATCH_FOUND", "GAME_STATE", "GAME_OVER", "RETRY_REQUESTED", "RESTART_GAME", "OPPONENT_LEFT", "CHAT", "ERROR"
-	Position int       `json:"position,omitempty"` // 0 to 8
-	Symbol   string    `json:"symbol,omitempty"`   // "X" or "O"
-	Turn     string    `json:"turn,omitempty"`     // "X" or "O"
-	Winner   string    `json:"winner,omitempty"`   // "X", "O", "DRAW", or ""
+	Type     string    `json:"type"` // "JOIN_QUEUE", "MOVE", "MATCH_FOUND", "GAME_STATE", "GAME_OVER", "RETRY_REQUESTED", "RESTART_GAME", "OPPONENT_LEFT", "CHAT", "ERROR"
+	Position int       `json:"position,omitempty"`
+	Symbol   string    `json:"symbol,omitempty"`
+	Turn     string    `json:"turn,omitempty"`
+	Winner   string    `json:"winner,omitempty"`
 	Board    [9]string `json:"board"`
 	Opponent string    `json:"opponent,omitempty"`
 	Error    string    `json:"error,omitempty"`
@@ -74,6 +81,7 @@ func main() {
 	initDB()
 	go matchmaker()
 
+	http.HandleFunc("/health", handleHealth)
 	http.HandleFunc("/api/register", handleRegister)
 	http.HandleFunc("/api/login", handleLogin)
 	http.HandleFunc("/api/leaderboard", handleLeaderboard)
@@ -101,6 +109,11 @@ func initDB() {
 		log.Fatal("Failed to connect to PostgreSQL:", err)
 	}
 
+	// Optimize connection pooling for Render free tier
+	db.SetMaxOpenConns(20)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
 	if err = db.Ping(); err != nil {
 		log.Fatal("PostgreSQL ping failed:", err)
 	}
@@ -121,6 +134,21 @@ func initDB() {
 	if err != nil {
 		log.Fatal("Failed to create users table:", err)
 	}
+}
+
+// Health check endpoint for UptimeRobot to keep server & DB alive
+func handleHealth(w http.ResponseWriter, r *http.Request) {
+	if db != nil {
+		var dummy int
+		err := db.QueryRow("SELECT 1").Scan(&dummy)
+		if err != nil {
+			http.Error(w, "Database ping failed", http.StatusInternalServerError)
+			return
+		}
+	}
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }
 
 func handleRegister(w http.ResponseWriter, r *http.Request) {
@@ -198,11 +226,6 @@ func handleLeaderboard(w http.ResponseWriter, r *http.Request) {
 		if err := rows.Scan(&entry.Username, &entry.Wins, &entry.Losses, &entry.Draws); err == nil {
 			leaderboard = append(leaderboard, entry)
 		}
-	}
-
-	if err := rows.Err(); err != nil {
-		http.Error(w, "Error iterating leaderboard rows", http.StatusInternalServerError)
-		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -343,6 +366,13 @@ func (c *Client) readPump() {
 		c.Conn.Close()
 	}()
 
+	c.Conn.SetReadLimit(512)
+	c.Conn.SetReadDeadline(time.Now().Add(pongWait))
+	c.Conn.SetPongHandler(func(string) error {
+		c.Conn.SetReadDeadline(time.Now().Add(pongWait))
+		return nil
+	})
+
 	for {
 		var msg Message
 		err := c.Conn.ReadJSON(&msg)
@@ -374,11 +404,28 @@ func (c *Client) readPump() {
 }
 
 func (c *Client) writePump() {
-	defer c.Conn.Close()
-	for msg := range c.Send {
-		err := c.Conn.WriteJSON(msg)
-		if err != nil {
-			break
+	ticker := time.NewTicker(pingPeriod)
+	defer func() {
+		ticker.Stop()
+		c.Conn.Close()
+	}()
+
+	for {
+		select {
+		case msg, ok := <-c.Send:
+			c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if !ok {
+				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+			if err := c.Conn.WriteJSON(msg); err != nil {
+				return
+			}
+		case <-ticker.C:
+			c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
 		}
 	}
 }
