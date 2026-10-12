@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -108,24 +110,85 @@ func setActiveRoom(username string, room *GameRoom) {
 	}
 }
 
+func withPrefixHandler(next http.Handler, customPrefix string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+
+		prefixes := []string{"/tictactoe"}
+		if customPrefix != "" && customPrefix != "/" && customPrefix != "/tictactoe" {
+			prefixes = append([]string{customPrefix}, prefixes...)
+		}
+
+		for _, p := range prefixes {
+			p = strings.TrimRight(p, "/")
+			if p == "" || p == "/" {
+				continue
+			}
+
+			// If the request path is exactly the prefix without trailing slash,
+			// redirect to trailing slash so relative paths (CSS/JS) resolve correctly.
+			if path == p {
+				target := p + "/"
+				if r.URL.RawQuery != "" {
+					target += "?" + r.URL.RawQuery
+				}
+				http.Redirect(w, r, target, http.StatusMovedPermanently)
+				return
+			}
+
+			// If the request starts with prefix + "/"
+			if strings.HasPrefix(path, p+"/") {
+				r2 := new(http.Request)
+				*r2 = *r
+				r2URL := new(url.URL)
+				*r2URL = *r.URL
+				r2URL.Path = strings.TrimPrefix(path, p)
+				if r2URL.Path == "" || !strings.HasPrefix(r2URL.Path, "/") {
+					r2URL.Path = "/" + r2URL.Path
+				}
+				if r.URL.RawPath != "" {
+					r2URL.RawPath = strings.TrimPrefix(r.URL.RawPath, p)
+					if r2URL.RawPath != "" && !strings.HasPrefix(r2URL.RawPath, "/") {
+						r2URL.RawPath = "/" + r2URL.RawPath
+					}
+				}
+				r2.URL = r2URL
+				r2.RequestURI = r2URL.RequestURI()
+				next.ServeHTTP(w, r2)
+				return
+			}
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	initDB()
 	go matchmaker()
 
-	http.HandleFunc("/health", handleHealth)
-	http.HandleFunc("/api/register", handleRegister)
-	http.HandleFunc("/api/login", handleLogin)
-	http.HandleFunc("/api/leaderboard", handleLeaderboard)
-	http.HandleFunc("/api/profile", handleProfile)
-	http.HandleFunc("/ws", handleWebSocket)
-	http.Handle("/", http.FileServer(http.Dir("./public")))
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", handleHealth)
+	mux.HandleFunc("/api/register", handleRegister)
+	mux.HandleFunc("/api/login", handleLogin)
+	mux.HandleFunc("/api/leaderboard", handleLeaderboard)
+	mux.HandleFunc("/api/profile", handleProfile)
+	mux.HandleFunc("/ws", handleWebSocket)
+	mux.Handle("/", http.FileServer(http.Dir("./public")))
+
+	appRoot := strings.TrimRight(os.Getenv("APPLICATION_ROOT"), "/")
+	if appRoot == "" {
+		appRoot = strings.TrimRight(os.Getenv("BASE_PATH"), "/")
+	}
+
+	handler := withPrefixHandler(mux, appRoot)
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	fmt.Printf("🚀 Game server running on port %s\n", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	fmt.Printf("🚀 Game server running on port %s (prefix: %s)\n", port, appRoot)
+	log.Fatal(http.ListenAndServe(":"+port, handler))
 }
 
 func initDB() {

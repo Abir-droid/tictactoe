@@ -8,6 +8,14 @@ let p2SessionScore = 0;
 let isChatOpen = false;
 let popupTimer = null;
 
+function getAppBase() {
+  let p = window.location.pathname;
+  p = p.replace(/\/[^/]+\.[^/]+$/, '');
+  p = p.replace(/\/+$/, '');
+  return p;
+}
+const APP_BASE = getAppBase();
+
 const svgIconX = `<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
 const svgIconO = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>`;
 
@@ -85,7 +93,7 @@ async function login() {
   const pass = document.getElementById("login-password").value.trim();
   if (!user || !pass) return alert("Enter both username and password");
 
-  const res = await fetch("/api/login", {
+  const res = await fetch(`${APP_BASE}/api/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username: user, password: pass })
@@ -106,7 +114,7 @@ async function register() {
   const pass = document.getElementById("reg-password").value.trim();
   if (!user || !pass) return alert("Enter both username and password");
 
-  const res = await fetch("/api/register", {
+  const res = await fetch(`${APP_BASE}/api/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username: user, password: pass })
@@ -132,7 +140,7 @@ function openDashboard() {
 
 async function loadProfileStats() {
   try {
-    const res = await fetch(`/api/profile?username=${encodeURIComponent(myUsername)}`);
+    const res = await fetch(`${APP_BASE}/api/profile?username=${encodeURIComponent(myUsername)}`);
     if (res.ok) {
       const stats = await res.json();
       document.getElementById("prof-wins").innerText = stats.wins;
@@ -150,7 +158,7 @@ async function loadLeaderboard() {
   tbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
 
   try {
-    const res = await fetch("/api/leaderboard");
+    const res = await fetch(`${APP_BASE}/api/leaderboard`);
     const data = await res.json();
 
     if (data.length === 0) {
@@ -176,7 +184,7 @@ function connectWebSocket() {
   if (ws && ws.readyState === WebSocket.OPEN) return;
 
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  ws = new WebSocket(`${protocol}//${location.host}/ws?username=${myUsername}`);
+  ws = new WebSocket(`${protocol}//${location.host}${APP_BASE}/ws?username=${encodeURIComponent(myUsername)}`);
 
   ws.onmessage = (event) => {
     const msg = JSON.parse(event.data);
