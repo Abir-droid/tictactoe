@@ -194,14 +194,15 @@ func main() {
 func initDB() {
 	connStr := os.Getenv("DATABASE_URL")
 	if connStr == "" {
-		log.Println("⚠️ DATABASE_URL not set, database features will fail if not provided.")
+		log.Println("⚠️ DATABASE_URL not set, running without database persistence.")
 		return
 	}
 
 	var err error
 	db, err = sql.Open("postgres", connStr)
 	if err != nil {
-		log.Fatal("Failed to connect to PostgreSQL:", err)
+		log.Printf("❌ Failed to open PostgreSQL driver: %v\n", err)
+		return
 	}
 
 	db.SetMaxOpenConns(20)
@@ -209,11 +210,18 @@ func initDB() {
 	db.SetConnMaxLifetime(5 * time.Minute)
 
 	if err = db.Ping(); err != nil {
-		log.Fatal("PostgreSQL ping failed:", err)
+		log.Printf("⚠️ PostgreSQL ping failed: %v\n🔄 Will retry database connection in background...\n", err)
+		go retryDBConnection()
+		return
 	}
 
-	fmt.Println("✅ Connected to PostgreSQL database successfully!")
+	setupTable()
+}
 
+func setupTable() {
+	if db == nil {
+		return
+	}
 	tableQuery := `
 	CREATE TABLE IF NOT EXISTS users (
 		id SERIAL PRIMARY KEY,
@@ -224,29 +232,54 @@ func initDB() {
 		draws INT DEFAULT 0,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);`
-	_, err = db.Exec(tableQuery)
+	_, err := db.Exec(tableQuery)
 	if err != nil {
-		log.Fatal("Failed to create users table:", err)
+		log.Printf("⚠️ Failed to create users table: %v\n", err)
+	} else {
+		fmt.Println("✅ Connected to PostgreSQL database and initialized users table successfully!")
+	}
+}
+
+func retryDBConnection() {
+	for i := 1; ; i++ {
+		time.Sleep(5 * time.Second)
+		if db == nil {
+			return
+		}
+		if err := db.Ping(); err == nil {
+			fmt.Println("✅ Connected to PostgreSQL database on background retry!")
+			setupTable()
+			return
+		} else {
+			log.Printf("⚠️ PostgreSQL connection retry #%d failed: %v\n", i, err)
+		}
 	}
 }
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
+	dbStatus := "disconnected"
 	if db != nil {
 		var dummy int
 		err := db.QueryRow("SELECT 1").Scan(&dummy)
-		if err != nil {
-			http.Error(w, "Database ping failed", http.StatusInternalServerError)
-			return
+		if err == nil {
+			dbStatus = "connected"
+		} else {
+			dbStatus = fmt.Sprintf("error: %v", err)
 		}
 	}
-	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
+	w.Write([]byte(fmt.Sprintf(`{"status":"OK","database":"%s"}`, dbStatus)))
 }
 
 func handleRegister(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if db == nil {
+		http.Error(w, "Database is currently unavailable", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -264,7 +297,7 @@ func handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	_, err = db.Exec("INSERT INTO users (username, password_hash) VALUES ($1, $2)", req.Username, string(hashedPassword))
 	if err != nil {
-		http.Error(w, "Username already exists", http.StatusConflict)
+		http.Error(w, "Username already exists or database error", http.StatusConflict)
 		return
 	}
 
@@ -275,6 +308,11 @@ func handleRegister(w http.ResponseWriter, r *http.Request) {
 func handleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if db == nil {
+		http.Error(w, "Database is currently unavailable", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -303,6 +341,12 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 func handleLeaderboard(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if db == nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]LeaderboardEntry{})
 		return
 	}
 
@@ -342,6 +386,11 @@ func handleProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if db == nil {
+		http.Error(w, "Database unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
 	var stats UserStats
 	err := db.QueryRow("SELECT wins, losses, draws, (wins + losses + draws) AS total FROM users WHERE username = $1", username).Scan(&stats.Wins, &stats.Losses, &stats.Draws, &stats.Total)
 	if err != nil {
@@ -360,11 +409,13 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var exists bool
-	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username=$1)", username).Scan(&exists)
-	if err != nil || !exists {
-		http.Error(w, "Unauthorized player", http.StatusUnauthorized)
-		return
+	if db != nil {
+		var exists bool
+		err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username=$1)", username).Scan(&exists)
+		if err != nil || !exists {
+			http.Error(w, "Unauthorized player", http.StatusUnauthorized)
+			return
+		}
 	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
