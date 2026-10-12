@@ -191,12 +191,31 @@ func main() {
 	log.Fatal(http.ListenAndServe(":"+port, handler))
 }
 
-func initDB() {
-	connStr := os.Getenv("DATABASE_URL")
+func fixPostgresConnStr(connStr string) string {
+	connStr = strings.TrimSpace(connStr)
 	if connStr == "" {
+		return ""
+	}
+
+	// If sslmode is not explicitly set, default to sslmode=disable
+	if !strings.Contains(connStr, "sslmode=") {
+		if strings.Contains(connStr, "?") {
+			connStr += "&sslmode=disable"
+		} else {
+			connStr += "?sslmode=disable"
+		}
+	}
+	return connStr
+}
+
+func initDB() {
+	rawConnStr := os.Getenv("DATABASE_URL")
+	if rawConnStr == "" {
 		log.Println("⚠️ DATABASE_URL not set, running without database persistence.")
 		return
 	}
+
+	connStr := fixPostgresConnStr(rawConnStr)
 
 	var err error
 	db, err = sql.Open("postgres", connStr)
@@ -210,8 +229,30 @@ func initDB() {
 	db.SetConnMaxLifetime(5 * time.Minute)
 
 	if err = db.Ping(); err != nil {
+		if strings.Contains(err.Error(), "SSL is not enabled") {
+			log.Println("⚠️ Server has SSL disabled. Switching to sslmode=disable and reconnecting...")
+			db.Close()
+			connStr = strings.ReplaceAll(connStr, "sslmode=require", "sslmode=disable")
+			connStr = strings.ReplaceAll(connStr, "sslmode=verify-full", "sslmode=disable")
+			connStr = strings.ReplaceAll(connStr, "sslmode=verify-ca", "sslmode=disable")
+			if !strings.Contains(connStr, "sslmode=disable") {
+				if strings.Contains(connStr, "?") {
+					connStr += "&sslmode=disable"
+				} else {
+					connStr += "?sslmode=disable"
+				}
+			}
+			db, err = sql.Open("postgres", connStr)
+			if err == nil {
+				if err = db.Ping(); err == nil {
+					fmt.Println("✅ Connected to PostgreSQL database successfully with sslmode=disable!")
+					setupTable()
+					return
+				}
+			}
+		}
 		log.Printf("⚠️ PostgreSQL ping failed: %v\n🔄 Will retry database connection in background...\n", err)
-		go retryDBConnection()
+		go retryDBConnection(connStr)
 		return
 	}
 
@@ -240,7 +281,7 @@ func setupTable() {
 	}
 }
 
-func retryDBConnection() {
+func retryDBConnection(connStr string) {
 	for i := 1; ; i++ {
 		time.Sleep(5 * time.Second)
 		if db == nil {
@@ -251,6 +292,29 @@ func retryDBConnection() {
 			setupTable()
 			return
 		} else {
+			if strings.Contains(err.Error(), "SSL is not enabled") {
+				log.Println("🔄 Detected SSL not enabled on PostgreSQL. Reconnecting with sslmode=disable...")
+				connStr = strings.ReplaceAll(connStr, "sslmode=require", "sslmode=disable")
+				connStr = strings.ReplaceAll(connStr, "sslmode=verify-full", "sslmode=disable")
+				connStr = strings.ReplaceAll(connStr, "sslmode=verify-ca", "sslmode=disable")
+				if !strings.Contains(connStr, "sslmode=disable") {
+					if strings.Contains(connStr, "?") {
+						connStr += "&sslmode=disable"
+					} else {
+						connStr += "?sslmode=disable"
+					}
+				}
+				db.Close()
+				var openErr error
+				db, openErr = sql.Open("postgres", connStr)
+				if openErr == nil {
+					if pingErr := db.Ping(); pingErr == nil {
+						fmt.Println("✅ Connected to PostgreSQL database successfully with sslmode=disable!")
+						setupTable()
+						return
+					}
+				}
+			}
 			log.Printf("⚠️ PostgreSQL connection retry #%d failed: %v\n", i, err)
 		}
 	}
